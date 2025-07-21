@@ -80,7 +80,16 @@
                     <artifactId>maven-plugin-plugin</artifactId>
                     <version>${plugin.plugin.version}</version>
                     <configuration>
-                        <goalPrefix>multi-module</goalPrefix>
+                        <goalPrefix>deploy-pom</goalPrefix>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>com.github.wvengen</groupId>
+                    <artifactId>proguard-maven-plugin</artifactId>
+                    <configuration>
+                        <options combine.children="append">
+                            <option>-libraryjars ${java.home}/jmods/java.xml.jmod</option>
+                        </options>
                     </configuration>
                 </plugin>
                 <plugin>
