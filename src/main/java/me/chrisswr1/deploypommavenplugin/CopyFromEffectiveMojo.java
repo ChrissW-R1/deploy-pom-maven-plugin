@@ -25,7 +25,7 @@ import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 import java.io.IOException;
 
-@Mojo(name = "copy-from-effective", defaultPhase = LifecyclePhase.VALIDATE, threadSafe = true)
+@Mojo(name = "copy-from-effective", defaultPhase = LifecyclePhase.PREPARE_PACKAGE, threadSafe = true)
 @Keep
 public class CopyFromEffectiveMojo extends AbstractMojo {
     @Parameter(defaultValue = "${project.build.directory}/${project.build.finalName}-effective.pom", readonly = true)
