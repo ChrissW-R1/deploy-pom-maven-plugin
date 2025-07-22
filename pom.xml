@@ -1,178 +1,179 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>me.chrisswr1</groupId>
-        <artifactId>java-parent</artifactId>
-        <version>2.4.0</version>
-    </parent>
+	<parent>
+		<groupId>me.chrisswr1</groupId>
+		<artifactId>java-parent</artifactId>
+		<version>2.4.0</version>
+	</parent>
 
-    <!-- project identifier -->
-    <groupId>me.chrissw-r1</groupId>
-    <artifactId>deploy-pom-maven-plugin</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
-    <packaging>maven-plugin</packaging>
+	<!-- project identifier -->
+	<groupId>me.chrissw-r1</groupId>
+	<artifactId>deploy-pom-maven-plugin</artifactId>
+	<version>1.0.0-SNAPSHOT</version>
+	<packaging>maven-plugin</packaging>
 
-    <!-- project metadata -->
-    <name>Deploy POM Maven Plugin</name>
-    <description>
-        Maven Plugin to prepare POM for deployment
-    </description>
-    <inceptionYear>2025</inceptionYear>
+	<!-- project metadata -->
+	<name>Deploy POM Maven Plugin</name>
+	<description>
+		Maven Plugin to prepare POM for deployment
+	</description>
+	<inceptionYear>2025</inceptionYear>
 
-    <properties>
-        <!-- technically-based properties -->
-        <project.module-root.relativedir>./</project.module-root.relativedir>
-        <project.module-root.artifactId>deploy-pom-maven-plugin</project.module-root.artifactId>
-        <mainClass.localPath>CopyFromEffectiveMojo</mainClass.localPath>
+	<properties>
+		<!-- technically-based properties -->
+		<project.module-root.relativedir>./</project.module-root.relativedir>
+		<project.module-root.artifactId>deploy-pom-maven-plugin</project.module-root.artifactId>
+		<mainClass.localPath>CopyFromEffectiveMojo</mainClass.localPath>
 
-        <!-- dependency versions -->
-        <maven.version>3.9.11</maven.version>
+		<!-- dependency versions -->
+		<maven.version>3.9.11</maven.version>
 
-        <!-- plugin versions -->
-        <plugin.plugin.version>3.15.1</plugin.plugin.version>
-    </properties>
+		<!-- plugin versions -->
+		<plugin.plugin.version>3.15.1</plugin.plugin.version>
+	</properties>
 
-    <scm>
-        <url>https://github.com/${project.organization.name}/${project.module-root.artifactId}</url>
-        <connection>scm:git:${project.scm.url}.git</connection>
-        <developerConnection>${project.scm.connection}</developerConnection>
-        <tag>HEAD</tag>
-    </scm>
+	<scm>
+		<url>https://github.com/${project.organization.name}/${project.module-root.artifactId}</url>
+		<connection>scm:git:${project.scm.url}.git</connection>
+		<developerConnection>${project.scm.connection}</developerConnection>
+		<tag>HEAD</tag>
+	</scm>
 
-    <distributionManagement>
-        <site>
-            <id>project-site-repo</id>
-            <url>${project.site.deploy.url}</url>
-        </site>
-    </distributionManagement>
+	<distributionManagement>
+		<site>
+			<id>project-site-repo</id>
+			<url>${project.site.deploy.url}</url>
+		</site>
+	</distributionManagement>
 
-    <repositories>
-        <repository>
-            <id>general-parent</id>
-            <name>General Parent</name>
-            <url>https://maven.pkg.github.com/ChrissW-R1/general-parent</url>
-        </repository>
-    </repositories>
+	<repositories>
+		<repository>
+			<id>general-parent</id>
+			<name>General Parent</name>
+			<url>https://maven.pkg.github.com/ChrissW-R1/general-parent</url>
+		</repository>
+	</repositories>
 
-    <dependencies>
-        <!-- provided dependencies -->
-        <dependency>
-            <groupId>org.apache.maven</groupId>
-            <artifactId>maven-plugin-api</artifactId>
-            <version>${maven.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.maven.plugin-tools</groupId>
-            <artifactId>maven-plugin-annotations</artifactId>
-            <version>${plugin.plugin.version}</version>
-            <scope>provided</scope>
-        </dependency>
-    </dependencies>
+	<dependencies>
+		<!-- provided dependencies -->
+		<dependency>
+			<groupId>org.apache.maven</groupId>
+			<artifactId>maven-plugin-api</artifactId>
+			<version>${maven.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.maven.plugin-tools</groupId>
+			<artifactId>maven-plugin-annotations</artifactId>
+			<version>${plugin.plugin.version}</version>
+			<scope>provided</scope>
+		</dependency>
+	</dependencies>
 
-    <build>
-        <sourceDirectory>src/main/java</sourceDirectory>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <artifactId>maven-plugin-plugin</artifactId>
-                    <version>${plugin.plugin.version}</version>
-                    <configuration>
-                        <goalPrefix>deploy-pom</goalPrefix>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <groupId>com.github.wvengen</groupId>
-                    <artifactId>proguard-maven-plugin</artifactId>
-                    <configuration>
-                        <options combine.children="append">
-                            <option>-libraryjars ${java.home}/jmods/java.xml.jmod</option>
-                        </options>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <artifactId>maven-antrun-plugin</artifactId>
-                    <executions>
-                        <execution>
-                            <id>restore-plugin-definition</id>
-                            <phase>pre-integration-test</phase>
-                            <goals>
-                                <goal>run</goal>
-                            </goals>
-                            <configuration>
-                                <target>
-                                    <exec executable="jar">
-                                        <arg value="uf" />
-                                        <arg value="${project.build.directory}/${project.build.finalName}.jar" />
-                                        <arg value="-C" />
-                                        <arg value="${project.build.outputDirectory}" />
-                                        <arg value="META-INF/maven/plugin.xml" />
-                                    </exec>
-                                </target>
-                            </configuration>
-                        </execution>
-                        <execution>
-                            <id>restore-plugin-help</id>
-                            <phase>pre-integration-test</phase>
-                            <goals>
-                                <goal>run</goal>
-                            </goals>
-                            <configuration>
-                                <target>
-                                    <exec executable="jar">
-                                        <arg value="uf" />
-                                        <arg value="${project.build.directory}/${project.build.finalName}.jar" />
-                                        <arg value="-C" />
-                                        <arg value="${project.build.outputDirectory}" />
-                                        <arg value="META-INF/maven/${project.groupId}/${project.artifactId}/plugin-help.xml" />
-                                    </exec>
-                                </target>
-                            </configuration>
-                        </execution>
-                    </executions>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-        <plugins>
-            <plugin>
-                <artifactId>maven-plugin-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>default-descriptor</id>
-                        <goals>
-                            <goal>descriptor</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
+	<build>
+		<sourceDirectory>src/main/java</sourceDirectory>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<artifactId>maven-plugin-plugin</artifactId>
+					<version>${plugin.plugin.version}</version>
+					<configuration>
+						<goalPrefix>deploy-pom</goalPrefix>
+					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>com.github.wvengen</groupId>
+					<artifactId>proguard-maven-plugin</artifactId>
+					<configuration>
+						<options combine.children="append">
+							<option>-libraryjars ${java.home}/jmods/java.xml.jmod</option>
+						</options>
+					</configuration>
+				</plugin>
+				<plugin>
+					<artifactId>maven-antrun-plugin</artifactId>
+					<executions>
+						<execution>
+							<id>restore-plugin-definition</id>
+							<phase>pre-integration-test</phase>
+							<goals>
+								<goal>run</goal>
+							</goals>
+							<configuration>
+								<target>
+									<exec executable="jar">
+										<arg value="uf" />
+										<arg value="${project.build.directory}/${project.build.finalName}.jar" />
+										<arg value="-C" />
+										<arg value="${project.build.outputDirectory}" />
+										<arg value="META-INF/maven/plugin.xml" />
+									</exec>
+								</target>
+							</configuration>
+						</execution>
+						<execution>
+							<id>restore-plugin-help</id>
+							<phase>pre-integration-test</phase>
+							<goals>
+								<goal>run</goal>
+							</goals>
+							<configuration>
+								<target>
+									<exec executable="jar">
+										<arg value="uf" />
+										<arg value="${project.build.directory}/${project.build.finalName}.jar" />
+										<arg value="-C" />
+										<arg value="${project.build.outputDirectory}" />
+										<arg value="META-INF/maven/${project.groupId}/${project.artifactId}/plugin-help.xml" />
+									</exec>
+								</target>
+							</configuration>
+						</execution>
+					</executions>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+		<plugins>
+			<plugin>
+				<artifactId>maven-plugin-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>default-descriptor</id>
+						<goals>
+							<goal>descriptor</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
 
-    <profiles>
-        <profile>
-            <id>attach-docs-and-sources</id>
-            <activation>
-                <property>
-                    <name>fullBuild</name>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-javadoc-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>attach-javadocs</id>
-                                <goals>
-                                    <goal>jar</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
+	<profiles>
+		<profile>
+			<id>attach-docs-and-sources</id>
+			<activation>
+				<property>
+					<name>fullBuild</name>
+				</property>
+			</activation>
+			<build>
+				<plugins>
+					<plugin>
+						<artifactId>maven-javadoc-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>attach-javadocs</id>
+								<goals>
+									<goal>jar</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 </project>
