@@ -1,5 +1,6 @@
 package me.chrisswr1.deploypommavenplugin;
 
+import lombok.Getter;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -24,41 +25,83 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
 
-@Mojo(name = "copy-from-effective", defaultPhase = LifecyclePhase.PREPARE_PACKAGE, threadSafe = true)
+@Mojo(
+	name = "copy-from-effective",
+	defaultPhase = LifecyclePhase.PREPARE_PACKAGE,
+	threadSafe = true
+)
 @Keep
 public class CopyFromEffectiveMojo extends AbstractMojo {
-    @Parameter(defaultValue = "${project.build.directory}/${project.build.finalName}-effective.pom", readonly = true)
-    @KeepName
-    private File effectivePom;
-    @Parameter(defaultValue = "${project.build.directory}/${project.build.finalName}.pom", readonly = true)
-    @KeepName
-    private File outputPom;
+	@Parameter(
+		defaultValue = "${project.build.directory}/${project.build.finalName}-effective.pom",
+		readonly = true
+	)
+	@KeepName
+	@Getter
+	private File effectivePom;
+	@Parameter(
+		defaultValue = "${project.build.directory}/generated-resources/pom.xml",
+		readonly = true
+	)
+	@KeepName
+	@Getter
+	private File outputPom;
+	@Parameter(
+		defaultValue = "${project.build.sourceEncoding}",
+		readonly = true
+	)
+	@KeepName
+	@Getter
+	private String charset;
 
-    @Override
-    public void execute() throws MojoExecutionException {
-        try {
-            final @NotNull DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            factory.setNamespaceAware(true);
+	@Override
+	public void execute() throws MojoExecutionException {
+		final @Nullable File effectivePom = this.getEffectivePom();
+		if (effectivePom == null || !(effectivePom.exists())) {
+			this.getLog().warn("Couldn't find effective POM!");
+			return;
+		}
+		final @Nullable File outputPom = this.getOutputPom();
+		if (outputPom == null || !(outputPom.exists())) {
+			this.getLog().warn("Couldn't find output POM!");
+			return;
+		}
+		@Nullable String charset = this.getCharset();
+		if (charset == null) {
+			charset = "UTF-8";
+		}
 
-            final @NotNull DocumentBuilder builder = factory.newDocumentBuilder();
-            final @NotNull Document effectiveDoc = builder.parse(this.effectivePom);
-            final @NotNull Document outputDoc = builder.parse(this.outputPom);
+		try {
+			final @NotNull DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+			factory.setNamespaceAware(true);
 
-            final @NotNull Element outputRoot = outputDoc.getDocumentElement();
-            final @Nullable Element developers = effectiveDoc.getElementById("developers");
+			final @NotNull DocumentBuilder builder = factory.newDocumentBuilder();
+			final @NotNull Document effectiveDoc = builder.parse(effectivePom);
+			final @NotNull Document outputDoc = builder.parse(outputPom);
 
-            if (outputRoot.getElementsByTagName("developers").item(0) == null) {
-                outputRoot.appendChild(developers);
-            }
+			final @NotNull Element outputRoot = outputDoc.getDocumentElement();
+			final @Nullable Element developers = effectiveDoc.getElementById("developers");
 
-            final @NotNull Transformer transformer = TransformerFactory.newInstance().newTransformer();
-            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-            transformer.transform(new DOMSource(outputDoc), new StreamResult(outputPom));
-        } catch (final @NotNull ParserConfigurationException | SAXException | IOException e) {
-            throw new MojoExecutionException("Couldn't parse POM!", e);
-        } catch (final @NotNull TransformerException e) {
-            throw new MojoExecutionException("Couldn't save output POM!", e);
-        }
-    }
+			if (outputRoot.getElementsByTagName("developers").item(0) == null && developers != null) {
+				outputRoot.appendChild(developers);
+			}
+
+			final @NotNull Transformer transformer = TransformerFactory.newInstance().newTransformer();
+			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+			transformer.setOutputProperty(OutputKeys.ENCODING, charset);
+			transformer.transform(new DOMSource(outputDoc), new StreamResult(outputPom));
+		} catch (final @NotNull ParserConfigurationException | SAXException | IOException e) {
+			throw new MojoExecutionException("Couldn't parse POM!", e);
+		} catch (final @NotNull TransformerException e) {
+			throw new MojoExecutionException("Couldn't save output POM!", e);
+		}
+
+		try {
+			FileProcessor.removeEmptyLines(outputPom, Charset.forName(charset));
+		} catch (final @NotNull IOException e) {
+			throw new MojoExecutionException("Couldn't remove empty lines from output POM!", e);
+		}
+	}
 }
