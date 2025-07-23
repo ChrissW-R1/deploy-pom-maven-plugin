@@ -10,6 +10,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
 import proguard.annotation.Keep;
 import proguard.annotation.KeepName;
@@ -42,7 +43,7 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 	@Getter
 	private File effectivePom;
 	@Parameter(
-		defaultValue = "${project.build.directory}/generated-resources/pom.xml",
+		defaultValue = "${project.basedir}/pom.xml",
 		readonly = true
 	)
 	@KeepName
@@ -82,10 +83,15 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 			final @NotNull Document outputDoc = builder.parse(outputPom);
 
 			final @NotNull Element outputRoot = outputDoc.getDocumentElement();
-			final @Nullable Element developers = effectiveDoc.getElementById("developers");
+			final @Nullable Node effectiveDevelopers = effectiveDoc.getDocumentElement().getElementsByTagName("developers").item(0);
+			final @Nullable Node importedDevelopers = outputDoc.importNode(effectiveDevelopers, true);
 
-			if (outputRoot.getElementsByTagName("developers").item(0) == null && developers != null) {
-				outputRoot.appendChild(developers);
+			if (
+				outputRoot.getElementsByTagName("developers").item(0) == null &&
+				importedDevelopers != null
+			) {
+				outputRoot.appendChild(importedDevelopers);
+				this.getLog().info("Added developers from effective POM to output POM.");
 			}
 
 			final @NotNull Transformer transformer = TransformerFactory.newInstance().newTransformer();
