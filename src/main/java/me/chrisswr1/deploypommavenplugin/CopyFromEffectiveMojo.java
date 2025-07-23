@@ -27,6 +27,7 @@ import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.HashSet;
 import java.util.Set;
 
 @Mojo(
@@ -41,6 +42,7 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 		readonly = true
 	)
 	@KeepName
+	@Nullable
 	@Getter
 	private File effectivePom;
 	@Parameter(
@@ -48,6 +50,7 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 		readonly = true
 	)
 	@KeepName
+	@Nullable
 	@Getter
 	private File outputPom;
 	@Parameter(
@@ -55,18 +58,25 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 		readonly = true
 	)
 	@KeepName
+	@Nullable
 	@Getter
 	private String charset;
 	@Parameter(
 		readonly = true
 	)
 	@KeepName
+	@NotNull
 	@Getter
 	private Set<String> nodes = Set.of(
 		"url",
 		"licenses",
 		"developers"
 	);
+	@Parameter(readonly = true)
+	@KeepName
+	@NotNull
+	@Getter
+	private Set<String> overwriteNodes = new HashSet<>();
 
 	@Override
 	public void execute() throws MojoExecutionException {
@@ -84,6 +94,8 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 		if (charset == null) {
 			charset = "UTF-8";
 		}
+		final @NotNull Charset defaultCharset = Charset.forName(charset);
+		final @NotNull Set<String> overwriteNodes = this.getOverwriteNodes();
 
 		try {
 			final @NotNull DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -96,7 +108,7 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 			final @NotNull Element outputRoot = outputDoc.getDocumentElement();
 			boolean outputChanged = false;
 
-			for (final @Nullable String nodeName : this.nodes) {
+			for (final @Nullable String nodeName : this.getNodes()) {
 				if (nodeName == null || nodeName.isEmpty()) {
 					continue;
 				}
@@ -104,7 +116,13 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 				final @Nullable Node effectiveNode = effectiveDoc.getDocumentElement().getElementsByTagName(nodeName).item(0);
 				final @Nullable Node importedNode = outputDoc.importNode(effectiveNode, true);
 
-				if (outputRoot.getElementsByTagName(nodeName).item(0) == null && importedNode != null) {
+				if (
+					importedNode != null &&
+					(
+						overwriteNodes.contains(nodeName) ||
+						outputRoot.getElementsByTagName(nodeName).item(0) == null
+					)
+				) {
 					outputRoot.appendChild(importedNode);
 					outputChanged = true;
 					this.getLog().info("Added " + nodeName + " from effective POM to output POM.");
