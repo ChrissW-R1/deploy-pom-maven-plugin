@@ -27,6 +27,7 @@ import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.Set;
 
 @Mojo(
 	name = "copy-from-effective",
@@ -56,6 +57,16 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 	@KeepName
 	@Getter
 	private String charset;
+	@Parameter(
+		readonly = true
+	)
+	@KeepName
+	@Getter
+	private Set<String> nodes = Set.of(
+		"url",
+		"licenses",
+		"developers"
+	);
 
 	@Override
 	public void execute() throws MojoExecutionException {
@@ -77,27 +88,36 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 		try {
 			final @NotNull DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 			factory.setNamespaceAware(true);
-
 			final @NotNull DocumentBuilder builder = factory.newDocumentBuilder();
+
 			final @NotNull Document effectiveDoc = builder.parse(effectivePom);
+
 			final @NotNull Document outputDoc = builder.parse(outputPom);
-
 			final @NotNull Element outputRoot = outputDoc.getDocumentElement();
-			final @Nullable Node effectiveDevelopers = effectiveDoc.getDocumentElement().getElementsByTagName("developers").item(0);
-			final @Nullable Node importedDevelopers = outputDoc.importNode(effectiveDevelopers, true);
+			boolean outputChanged = false;
 
-			if (
-				outputRoot.getElementsByTagName("developers").item(0) == null &&
-				importedDevelopers != null
-			) {
-				outputRoot.appendChild(importedDevelopers);
-				this.getLog().info("Added developers from effective POM to output POM.");
+			for (final @Nullable String nodeName : this.nodes) {
+				if (nodeName == null || nodeName.isEmpty()) {
+					continue;
+				}
+
+				final @Nullable Node effectiveNode = effectiveDoc.getDocumentElement().getElementsByTagName(nodeName).item(0);
+				final @Nullable Node importedNode = outputDoc.importNode(effectiveNode, true);
+
+				if (outputRoot.getElementsByTagName(nodeName).item(0) == null && importedNode != null) {
+					outputRoot.appendChild(importedNode);
+					outputChanged = true;
+					this.getLog().info("Added " + nodeName + " from effective POM to output POM.");
+				}
 			}
 
-			final @NotNull Transformer transformer = TransformerFactory.newInstance().newTransformer();
-			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-			transformer.setOutputProperty(OutputKeys.ENCODING, charset);
-			transformer.transform(new DOMSource(outputDoc), new StreamResult(outputPom));
+			if (outputChanged) {
+				final @NotNull Transformer transformer = TransformerFactory.newInstance().newTransformer();
+				transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+				transformer.setOutputProperty(OutputKeys.ENCODING, charset);
+				transformer.transform(new DOMSource(outputDoc), new StreamResult(outputPom));
+				this.getLog().info("Output POM formatted.");
+			}
 		} catch (final @NotNull ParserConfigurationException | SAXException | IOException e) {
 			throw new MojoExecutionException("Couldn't parse POM!", e);
 		} catch (final @NotNull TransformerException e) {
