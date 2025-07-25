@@ -8,10 +8,10 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.project.MavenProject;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
 import proguard.annotation.Keep;
@@ -30,7 +30,6 @@ import javax.xml.xpath.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.HashSet;
 import java.util.Set;
 
 @Mojo(
@@ -87,11 +86,19 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 		"licenses",
 		"developers"
 	);
-	@Parameter(readonly = true)
+	@Parameter(
+		defaultValue = "false",
+		readonly = true
+	)
 	@KeepName
-	@NotNull
 	@Getter
-	private Set<String> overwriteNodes = Set.of();
+	private boolean overwriteNodes;
+	@Parameter(
+		defaultValue = "false",
+		readonly = true
+	)
+	@Getter
+	private boolean resolveProperties;
 
 	@Override
 	public void execute() throws MojoExecutionException {
@@ -113,9 +120,16 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 		if (charset == null) {
 			charset = "UTF-8";
 		}
-		final @NotNull Set<String> overwriteNodes = this.getOverwriteNodes();
+		final boolean overwriteNodes = this.isOverwriteNodes();
+		final boolean resolveProperties = this.isResolveProperties();
 
-		final @NotNull String artifactId = session.getCurrentProject().getArtifactId();
+		final @Nullable MavenProject project = session.getCurrentProject();
+		if (project == null) {
+			throw new MojoExecutionException("Maven project is not available!");
+		}
+
+		final @NotNull String artifactId = project.getArtifactId();
+		final @NotNull PropertyProcessor propertyProcessor = new PropertyProcessor(session);
 
 		try {
 			final @NotNull DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -163,6 +177,9 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 					effectiveNode,
 					true
 				);
+				if (resolveProperties) {
+					propertyProcessor.resolveNode(importedNode);
+				}
 
 				final @Nullable Node outputNode = (Node)(xpath.evaluate(
 					nodeName,
@@ -172,7 +189,7 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 
 				if (
 					importedNode != null &&
-					(overwriteNodes.contains(nodeName) || outputNode == null)
+						(overwriteNodes || outputNode == null)
 				) {
 					outputProject.appendChild(importedNode);
 					outputChanged = true;
