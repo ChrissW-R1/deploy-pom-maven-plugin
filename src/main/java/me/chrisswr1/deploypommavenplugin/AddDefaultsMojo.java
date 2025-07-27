@@ -142,6 +142,10 @@ public class AddDefaultsMojo extends AbstractMojo {
 						true
 					));
 
+					if (node.isResolveProperties()) {
+						propertyProcessor.resolveNode(importedNode);
+					}
+
 					if (
 						importedNode != null &&
 						(node.isOverwrite() || existingNode == null)
@@ -160,9 +164,10 @@ public class AddDefaultsMojo extends AbstractMojo {
 					}
 				}
 			} catch (
+				final @NotNull
+				IOException |
 				ParserConfigurationException |
 				SAXException |
-				IOException |
 				XPathExpressionException e
 			) {
 				throw new MojoExecutionException(

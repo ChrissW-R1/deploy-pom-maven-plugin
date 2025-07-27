@@ -47,7 +47,9 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 	@KeepName
 	private @Nullable MavenSession session;
 	@Parameter(
-		defaultValue = "${project.build.directory}/${project.build.finalName}-effective.pom",
+		defaultValue =
+			"${project.build.directory}/" +
+			"${project.build.finalName}-effective.pom",
 		readonly = true
 	)
 	@Getter
@@ -188,7 +190,10 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 				this.getLog().info("Output POM formatted.");
 			}
 		} catch (
-			final @NotNull ParserConfigurationException | SAXException | IOException e
+			final @NotNull
+			IOException |
+			ParserConfigurationException |
+			SAXException e
 		) {
 			throw new MojoExecutionException("Couldn't parse POM!", e);
 		} catch (final @NotNull TransformerException e) {
