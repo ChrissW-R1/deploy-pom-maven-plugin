@@ -8,13 +8,23 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.project.MavenProject;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.Text;
+import org.xml.sax.SAXException;
 import proguard.annotation.Keep;
 import proguard.annotation.KeepName;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.xpath.*;
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Mojo(
@@ -24,6 +34,8 @@ import java.util.List;
 )
 @Keep
 public class AddDefaultsMojo extends AbstractMojo {
+	private static final @NotNull String WRAPPED_TAG = "wrapped";
+
 	@Parameter(
 		defaultValue = "${session}",
 		readonly = true
@@ -43,19 +55,12 @@ public class AddDefaultsMojo extends AbstractMojo {
 	@KeepName
 	private @Nullable File pomFile;
 	@Parameter(
-		defaultValue = "me.chrissw-r1",
+		defaultValue = "${project.build.sourceEncoding}",
 		readonly = true
 	)
 	@Getter
 	@KeepName
-	private @Nullable String rootGroupId;
-	@Parameter(
-		defaultValue = "general-parent",
-		readonly = true
-	)
-	@Getter
-	@KeepName
-	private @Nullable String rootArtifactId;
+	private @Nullable String encoding;
 	@Parameter(
 		readonly = true
 	)
@@ -69,31 +74,100 @@ public class AddDefaultsMojo extends AbstractMojo {
 
 	@Override
 	public void execute() throws MojoExecutionException {
-		final @Nullable MavenSession session = this.getSession();
-		if (session == null) {
-			throw new MojoExecutionException("Maven session is not available!");
+		@Nullable String encoding = this.getEncoding();
+		if (encoding == null) {
+			encoding = StandardCharsets.UTF_8.name();
 		}
-		final @Nullable String rootGroupId = this.getRootGroupId();
-		if (rootGroupId == null) {
-			throw new MojoExecutionException("Parameter 'rootGroupId' is null!");
-		}
-		final @Nullable String rootArtifactId = this.getRootArtifactId();
-		if (rootArtifactId == null) {
-			throw new MojoExecutionException("Parameter 'rootArtifactId' is null!");
+		final @Nullable File pomFile = this.getPomFile();
+		if (pomFile == null || !(pomFile.exists())) {
+			throw new MojoExecutionException(
+				"Couldn't find POM file to add defaults to!"
+			);
 		}
 
-		@NotNull MavenProject project = session.getCurrentProject();
-		while (!(
-			rootGroupId.equalsIgnoreCase(project.getGroupId()) &&
-			rootArtifactId.equalsIgnoreCase(project.getArtifactId())
-		)) {
-			if (project.hasParent()) {
-				project = project.getParent();
-			} else {
+		PropertyProcessor propertyProcessor = new PropertyProcessor(
+			this.getSession()
+		);
+
+		boolean outputChanged = false;
+		for (final @NotNull XmlNode node : this.getNodes()) {
+			@Nullable String defaultValue = node.getDefaultValue();
+			if (defaultValue == null) {
+				defaultValue = "";
+			}
+			final @NotNull String wrapped =
+				"<" + AddDefaultsMojo.WRAPPED_TAG + ">" +
+				defaultValue +
+				"</" + AddDefaultsMojo.WRAPPED_TAG + ">";
+
+			try {
+				final @NotNull DocumentBuilder builder = (
+					new XmlProcessor()
+				).createDocumentBuilder();
+				final @NotNull XPath xpath =
+					XPathFactory.newInstance().newXPath();
+				final @NotNull XPathExpression projectXpath = xpath.compile(
+					"//project"
+				);
+				final @NotNull Document pom = builder.parse(pomFile);
+				final @Nullable Node project = (Node)(projectXpath.evaluate(
+					pom,
+					XPathConstants.NODE
+				));
+				if (project == null) {
+					throw new MojoExecutionException(
+						"Couldn't find <project> node in POM file!"
+					);
+				}
+
+				final @NotNull Document wrappedDoc = builder.parse(
+					new ByteArrayInputStream(wrapped.getBytes(encoding))
+				);
+
+				final @NotNull NodeList children = wrappedDoc.getChildNodes();
+				for (int i = 0; i < children.getLength(); i++) {
+					final @Nullable String nodeXpath = node.getXpath();
+					if (nodeXpath == null || nodeXpath.isEmpty()) {
+						continue;
+					}
+					final @Nullable Node existingNode = (Node)(xpath.evaluate(
+						nodeXpath,
+						project,
+						XPathConstants.NODE
+					));
+
+					final @NotNull Node child = children.item(i);
+					final @NotNull Node importedNode = (pom.importNode(
+						child,
+						true
+					));
+
+					if (
+						importedNode != null &&
+						(node.isOverwrite() || existingNode == null)
+					) {
+						if (
+							importedNode.getNodeType() == Node.ELEMENT_NODE
+						) {
+							project.appendChild(importedNode);
+						} else if (
+							importedNode.getNodeType() == Node.TEXT_NODE
+						) {
+							project.setTextContent(
+								((Text)importedNode).getWholeText()
+							);
+						}
+					}
+				}
+			} catch (
+				ParserConfigurationException |
+				SAXException |
+				IOException |
+				XPathExpressionException e
+			) {
 				throw new MojoExecutionException(
-					"Could not find the '" +
-					rootGroupId + ":" + rootArtifactId +
-					"' in the parent hierarchy!"
+					"Couldn't initialize XML parser!",
+					e
 				);
 			}
 		}

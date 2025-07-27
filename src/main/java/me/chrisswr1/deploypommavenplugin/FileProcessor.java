@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class FileProcessor {
-	public static void removeEmptyLines(
+	public void removeEmptyLines(
 		final @NotNull File file,
 		final @NotNull Charset charset
 	) throws IOException {

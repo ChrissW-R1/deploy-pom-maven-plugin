@@ -20,30 +20,47 @@ public class PropertyProcessor {
 	@Getter
 	private final StringSearchInterpolator stringInterpolator;
 
-	public PropertyProcessor(final @Nullable MavenSession session) {
-		final @NotNull StringSearchInterpolator stringInterpolator = new StringSearchInterpolator();
+	public PropertyProcessor(
+		final @Nullable MavenSession session
+	) {
+		final @NotNull StringSearchInterpolator stringInterpolator =
+			new StringSearchInterpolator();
 
 		if (session != null) {
 			final @Nullable MavenProject project = session.getCurrentProject();
 			if (project != null) {
-				stringInterpolator.addValueSource(new PropertiesBasedValueSource(project.getProperties()));
-				stringInterpolator.addValueSource(new PrefixedObjectValueSource("project", project));
-				stringInterpolator.addValueSource(new PrefixedObjectValueSource("pom", project));
+				stringInterpolator.addValueSource(
+					new PropertiesBasedValueSource(project.getProperties())
+				);
+				stringInterpolator.addValueSource(
+					new PrefixedObjectValueSource("project", project)
+				);
+				stringInterpolator.addValueSource(
+					new PrefixedObjectValueSource("pom", project)
+				);
 			}
 
-			stringInterpolator.addValueSource(new PropertiesBasedValueSource(session.getUserProperties()));
-			stringInterpolator.addValueSource(new PropertiesBasedValueSource(session.getSystemProperties()));
+			stringInterpolator.addValueSource(
+				new PropertiesBasedValueSource(session.getUserProperties())
+			);
+			stringInterpolator.addValueSource(
+				new PropertiesBasedValueSource(session.getSystemProperties())
+			);
 		}
 
 		try {
-			stringInterpolator.addValueSource(new PropertiesBasedValueSource(System.getProperties()));
+			stringInterpolator.addValueSource(
+				new PropertiesBasedValueSource(System.getProperties())
+			);
 		} catch (final @NotNull SecurityException ignored) {
 		}
 
 		this.stringInterpolator = stringInterpolator;
 	}
 
-	public @Nullable String resolveString(final @Nullable String text) {
+	public @Nullable String resolveString(
+		final @Nullable String text
+	) {
 		if (text == null) {
 			return null;
 		}
@@ -55,7 +72,9 @@ public class PropertyProcessor {
 		}
 	}
 
-	public void resolveNode(final @Nullable Node node) {
+	public void resolveNode(
+		final @Nullable Node node
+	) {
 		if (node == null) {
 			return;
 		}
