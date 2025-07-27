@@ -20,10 +20,12 @@ import proguard.annotation.KeepName;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerException;
 import javax.xml.xpath.*;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -84,97 +86,138 @@ public class AddDefaultsMojo extends AbstractMojo {
 				"Couldn't find POM file to add defaults to!"
 			);
 		}
+		final @NotNull XmlProcessor xmlProcessor = new XmlProcessor();
 
-		PropertyProcessor propertyProcessor = new PropertyProcessor(
-			this.getSession()
-		);
-
-		boolean outputChanged = false;
-		for (final @NotNull XmlNode node : this.getNodes()) {
-			@Nullable String defaultValue = node.getDefaultValue();
-			if (defaultValue == null) {
-				defaultValue = "";
+		try {
+			final @NotNull DocumentBuilder builder =
+				xmlProcessor.createDocumentBuilder();
+			final @NotNull XPath xpath = XPathFactory.newInstance().newXPath();
+			final @NotNull XPathExpression projectXpath = xpath.compile(
+				"//project"
+			);
+			final @NotNull Document pom = builder.parse(pomFile);
+			final @Nullable Node project = (Node)(projectXpath.evaluate(
+				pom,
+				XPathConstants.NODE
+			));
+			if (project == null) {
+				throw new MojoExecutionException(
+					"Couldn't find <project> node in POM file!"
+				);
 			}
-			final @NotNull String wrapped =
-				"<" + AddDefaultsMojo.WRAPPED_TAG + ">" +
-				defaultValue +
-				"</" + AddDefaultsMojo.WRAPPED_TAG + ">";
 
-			try {
-				final @NotNull DocumentBuilder builder = (
-					new XmlProcessor()
-				).createDocumentBuilder();
-				final @NotNull XPath xpath =
-					XPathFactory.newInstance().newXPath();
-				final @NotNull XPathExpression projectXpath = xpath.compile(
-					"//project"
-				);
-				final @NotNull Document pom = builder.parse(pomFile);
-				final @Nullable Node project = (Node)(projectXpath.evaluate(
-					pom,
-					XPathConstants.NODE
-				));
-				if (project == null) {
-					throw new MojoExecutionException(
-						"Couldn't find <project> node in POM file!"
-					);
-				}
+			PropertyProcessor propertyProcessor = new PropertyProcessor(
+				this.getSession()
+			);
 
-				final @NotNull Document wrappedDoc = builder.parse(
-					new ByteArrayInputStream(wrapped.getBytes(encoding))
-				);
-
-				final @NotNull NodeList children = wrappedDoc.getChildNodes();
-				for (int i = 0; i < children.getLength(); i++) {
-					final @Nullable String nodeXpath = node.getXpath();
-					if (nodeXpath == null || nodeXpath.isEmpty()) {
+			boolean outputChanged = false;
+			for (final @NotNull XmlNode node : this.getNodes()) {
+				try {
+					final @Nullable String nodePath = node.getXpath();
+					if (nodePath == null || nodePath.isEmpty()) {
 						continue;
 					}
 					final @Nullable Node existingNode = (Node)(xpath.evaluate(
-						nodeXpath,
+						nodePath,
 						project,
-						XPathConstants.NODE
-					));
+						XPathConstants.NODE)
+					);
 
-					final @NotNull Node child = children.item(i);
-					final @NotNull Node importedNode = (pom.importNode(
-						child,
-						true
-					));
-
-					if (node.isResolveProperties()) {
-						propertyProcessor.resolveNode(importedNode);
+					if (existingNode != null && !(node.isOverwrite())) {
+						continue;
 					}
 
-					if (
-						importedNode != null &&
-						(node.isOverwrite() || existingNode == null)
-					) {
+					if (!(nodePath.matches(
+						"([A-Za-z_:][A-Za-z0-9_.:-]*)(/([A-Za-z_:][A-Za-z0-9_.:-]*))*"
+					))) {
+						this.getLog().error(
+							"Invalid XPath expression: " +
+							nodePath + ". Skipping node."
+						);
+						continue;
+					}
+
+					@NotNull Node treeNode = project;
+					for (final @NotNull String pathPart : nodePath.split(
+						"/"
+					)) {
+						@NotNull Node createdNode = pom.createElement(pathPart);
+						treeNode.appendChild(createdNode);
+						treeNode = createdNode;
+					}
+
+					@Nullable String defaultValue = node.getDefaultValue();
+					if (defaultValue == null) {
+						defaultValue = "";
+					}
+					final @NotNull String wrapped =
+						"<" + AddDefaultsMojo.WRAPPED_TAG + ">" +
+						defaultValue +
+						"</" + AddDefaultsMojo.WRAPPED_TAG + ">";
+
+					final @NotNull Document wrappedDoc = builder.parse(
+						new ByteArrayInputStream(wrapped.getBytes(encoding))
+					);
+
+					final @NotNull NodeList children = wrappedDoc.getChildNodes();
+					for (int i = 0; i < children.getLength(); i++) {
+						final @NotNull Node child = children.item(i);
+						final @NotNull Node importedNode = (pom.importNode(
+							child,
+							true
+						));
+
+						if (node.isResolveProperties()) {
+							propertyProcessor.resolveNode(importedNode);
+						}
+
+						if (importedNode == null) {
+							continue;
+						}
+
 						if (
 							importedNode.getNodeType() == Node.ELEMENT_NODE
 						) {
-							project.appendChild(importedNode);
+							treeNode.appendChild(importedNode);
+							outputChanged = true;
 						} else if (
 							importedNode.getNodeType() == Node.TEXT_NODE
 						) {
-							project.setTextContent(
+							treeNode.setTextContent(
 								((Text)importedNode).getWholeText()
 							);
+							outputChanged = true;
 						}
 					}
+				} catch (
+					final @NotNull
+					IOException |
+					SAXException |
+					XPathExpressionException e
+				) {
+					throw new MojoExecutionException(
+						"Couldn't initialize XML parser!",
+						e
+					);
 				}
-			} catch (
-				final @NotNull
-				IOException |
-				ParserConfigurationException |
-				SAXException |
-				XPathExpressionException e
-			) {
-				throw new MojoExecutionException(
-					"Couldn't initialize XML parser!",
-					e
-				);
 			}
+
+			if (outputChanged) {
+				xmlProcessor.format(pomFile, pom, Charset.forName(encoding));
+				this.getLog().info("Output POM formatted.");
+			}
+		} catch (
+			final @NotNull
+			IOException |
+			ParserConfigurationException |
+			SAXException |
+			TransformerException |
+			XPathExpressionException e
+		) {
+			throw new MojoExecutionException(
+				"Couldn't initialize XML parser!",
+				e
+			);
 		}
 	}
 }
