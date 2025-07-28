@@ -5,21 +5,26 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.jetbrains.annotations.Nullable;
+import proguard.annotation.KeepName;
 
 @NoArgsConstructor
 @AllArgsConstructor
 public class XmlNode {
 	@Getter
 	@Setter
+	@KeepName
 	private @Nullable String xpath = "";
 	@Getter
 	@Setter
+	@KeepName
 	private boolean overwrite = false;
 	@Getter
 	@Setter
+	@KeepName
 	private boolean copyFromEffective = false;
 	@Getter
 	@Setter
+	@KeepName
 	private boolean resolveProperties = false;
 
 	public XmlNode(
