@@ -14,9 +14,6 @@ public class XmlNode {
 	private @Nullable String xpath = "";
 	@Getter
 	@Setter
-	private @Nullable String defaultValue = "";
-	@Getter
-	@Setter
 	private boolean overwrite = false;
 	@Getter
 	@Setter
