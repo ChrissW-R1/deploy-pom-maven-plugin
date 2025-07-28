@@ -18,7 +18,6 @@ import proguard.annotation.Keep;
 import proguard.annotation.KeepName;
 
 import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 import javax.xml.xpath.*;
@@ -191,9 +190,15 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 			SAXException e
 		) {
 			throw new MojoExecutionException("Couldn't parse POM!", e);
-		} catch (final @NotNull TransformerException e) {
+		} catch (
+			final @NotNull
+			TransformerException e
+		) {
 			throw new MojoExecutionException("Couldn't save output POM!", e);
-		} catch (XPathExpressionException e) {
+		} catch (
+			final @NotNull
+			XPathExpressionException e
+		) {
 			throw new MojoExecutionException(
 				"Couldn't parse xpath to project node!",
 				e
