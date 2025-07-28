@@ -40,30 +40,24 @@ public class AddDefaultsMojo extends AbstractMojo {
 	@KeepName
 	private @Nullable MavenSession session;
 	@Parameter(
-		defaultValue = "false",
-		readonly = true
+		defaultValue = "false"
 	)
 	@Getter
 	@KeepName
 	private boolean overwriteWithDefaults;
 	@Parameter(
-		defaultValue = "$${project.site.baseUrl}/$${project.site.urlPath}",
-		readonly = true
+		defaultValue = "$${project.site.baseUrl}/$${project.site.urlPath}"
 	)
 	@Getter
 	@KeepName
 	private @Nullable String url;
-	@Parameter(
-		readonly = true
-	)
+	@Parameter
 	@Getter
 	@KeepName
 	private @NotNull List<License> licenses = List.of(
 		AddDefaultsMojo.DEFAULT_LICENSE
 	);
-	@Parameter(
-		readonly = true
-	)
+	@Parameter
 	@Getter
 	@KeepName
 	private @NotNull List<Developer> developers = List.of();

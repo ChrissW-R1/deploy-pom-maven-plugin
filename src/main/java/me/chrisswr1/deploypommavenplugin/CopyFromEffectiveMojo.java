@@ -49,29 +49,24 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 	@Parameter(
 		defaultValue =
 			"${project.build.directory}/" +
-			"${project.build.finalName}-effective.pom",
-		readonly = true
+			"${project.build.finalName}-effective.pom"
 	)
 	@Getter
 	@KeepName
 	private @Nullable File effectivePom;
 	@Parameter(
-		defaultValue = "${project.basedir}/pom.xml",
-		readonly = true
+		defaultValue = "${project.basedir}/pom.xml"
 	)
 	@Getter
 	@KeepName
 	private @Nullable File outputPom;
 	@Parameter(
-		defaultValue = "${project.build.sourceEncoding}",
-		readonly = true
+		defaultValue = "${project.build.sourceEncoding}"
 	)
 	@Getter
 	@KeepName
 	private @Nullable String encoding;
-	@Parameter(
-		readonly = true
-	)
+	@Parameter
 	@Getter
 	@KeepName
 	private @NotNull List<XmlNode> nodes = List.of(
