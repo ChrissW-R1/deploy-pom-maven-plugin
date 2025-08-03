@@ -101,6 +101,7 @@ public class CopyFromEffectiveMojo
 			);
 		}
 
+		boolean       appliedChanges     = false;
 		final boolean overwriteEffective = this.isOverwriteWithEffective();
 		final @NotNull PropertyProcessor propertyProcessor =
 			new PropertyProcessor(session);
@@ -119,7 +120,13 @@ public class CopyFromEffectiveMojo
 				url = propertyProcessor.resolveString(url);
 			}
 
-			model.setUrl(url);
+			if (
+				url != null && (!(url.isEmpty())) &&
+				(!(url.equalsIgnoreCase(existingUrl)))
+			) {
+				model.setUrl(url);
+				appliedChanges = true;
+			}
 		}
 
 		@NotNull List<License> existingLicenses = model.getLicenses();
@@ -154,6 +161,7 @@ public class CopyFromEffectiveMojo
 			}
 
 			model.setLicenses(licenses);
+			appliedChanges = true;
 		}
 
 		@NotNull List<Developer> existingDevelopers = model.getDevelopers();
@@ -191,15 +199,18 @@ public class CopyFromEffectiveMojo
 			}
 
 			model.setDevelopers(developers);
+			appliedChanges = true;
 		}
 
-		try {
-			PomProcessor.setModel(this.getOutputPom(), model, project);
-		} catch (IOException e) {
-			throw new MojoExecutionException(
-				"Can't write model to output POM!",
-				e
-			);
+		if (appliedChanges) {
+			try {
+				PomProcessor.setModel(this.getOutputPom(), model, project);
+			} catch (IOException e) {
+				throw new MojoExecutionException(
+					"Can't write model to output POM!",
+					e
+				);
+			}
 		}
 	}
 }

@@ -92,28 +92,51 @@ extends AbstractMojo {
 			throw new MojoExecutionException("Couldn't read project POM!", e);
 		}
 
+		boolean       appliedChanges        = false;
 		final boolean overwriteWithDefaults = this.isOverwriteWithDefaults();
 
-		final @Nullable String url = this.getDefaultUrl();
-		if (url != null && (model.getUrl() == null || overwriteWithDefaults)) {
-			model.setUrl(url);
+		final @Nullable String existingUrl = model.getUrl();
+		final @Nullable String defaultUrl  = this.getDefaultUrl();
+		if (
+			defaultUrl != null &&
+			(!(defaultUrl.equalsIgnoreCase(existingUrl))) &&
+			(
+				existingUrl == null ||
+				existingUrl.isEmpty() ||
+				overwriteWithDefaults
+			)
+		) {
+			model.setUrl(defaultUrl);
+			appliedChanges = true;
 		}
 
-		if (model.getLicenses().isEmpty() || overwriteWithDefaults) {
-			model.setLicenses(this.getDefaultLicenses());
+		final @NotNull List<License> defaultLicenses = this.getDefaultLicenses();
+		if (
+			(!(defaultLicenses.isEmpty())) &&
+			(model.getLicenses().isEmpty() || overwriteWithDefaults)
+		) {
+			model.setLicenses(defaultLicenses);
+			appliedChanges = true;
 		}
 
-		if (model.getDevelopers().isEmpty() || overwriteWithDefaults) {
-			model.setDevelopers(this.getDefaultDevelopers());
+		final @NotNull List<Developer> defaultDevelopers = this.getDefaultDevelopers();
+		if (
+			(!(defaultLicenses.isEmpty())) &&
+			(model.getDevelopers().isEmpty() || overwriteWithDefaults)
+		) {
+			model.setDevelopers(defaultDevelopers);
+			appliedChanges = true;
 		}
 
-		try {
-			PomProcessor.setModel(this.getOutputPom(), model, project);
-		} catch (IOException e) {
-			throw new MojoExecutionException(
-				"Can't write model to output POM!",
-				e
-			);
+		if (appliedChanges) {
+			try {
+				PomProcessor.setModel(this.getOutputPom(), model, project);
+			} catch (IOException e) {
+				throw new MojoExecutionException(
+					"Can't write model to output POM!",
+					e
+				);
+			}
 		}
 	}
 }
