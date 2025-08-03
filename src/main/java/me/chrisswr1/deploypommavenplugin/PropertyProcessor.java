@@ -71,45 +71,4 @@ public class PropertyProcessor {
 			return text;
 		}
 	}
-
-	public void resolveNode(
-		final @Nullable Node node
-	) {
-		if (node == null) {
-			return;
-		}
-
-		switch (node.getNodeType()) {
-			case Node.TEXT_NODE: {
-				Text textNode = (Text) node;
-				String rawText = textNode.getWholeText();
-				String resolvedText = this.resolveString(rawText);
-				if (!(rawText.equals(resolvedText))) {
-					textNode.setData(resolvedText);
-				}
-				break;
-			}
-			case Node.ATTRIBUTE_NODE: {
-				Attr attribute = (Attr) node;
-				String rawText = attribute.getValue();
-				String resolvedText = this.resolveString(rawText);
-				if (!(rawText.equals(resolvedText))) {
-					attribute.setValue(resolvedText);
-				}
-				break;
-			}
-			case Node.ELEMENT_NODE: {
-				Element element = (Element) node;
-				NamedNodeMap attributes = element.getAttributes();
-				for (int i = 0; i < attributes.getLength(); i++) {
-					this.resolveNode(attributes.item(i));
-				}
-
-				NodeList childNodes = element.getChildNodes();
-				for (int i = 0; i < childNodes.getLength(); i++) {
-					this.resolveNode(childNodes.item(i));
-				}
-			}
-		}
-	}
 }

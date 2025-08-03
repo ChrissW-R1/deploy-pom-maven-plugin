@@ -3,28 +3,28 @@ package me.chrisswr1.deploypommavenplugin;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import lombok.Getter;
 import org.apache.maven.execution.MavenSession;
+import org.apache.maven.model.Developer;
+import org.apache.maven.model.License;
+import org.apache.maven.model.Model;
+import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
+import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
+import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.xml.sax.SAXException;
 import proguard.annotation.Keep;
 import proguard.annotation.KeepName;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.TransformerException;
-import javax.xml.xpath.*;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 @Mojo(
@@ -33,7 +33,8 @@ import java.util.List;
 	threadSafe = true
 )
 @Keep
-public class CopyFromEffectiveMojo extends AbstractMojo {
+public class CopyFromEffectiveMojo
+extends AbstractMojo {
 	@Parameter(
 		defaultValue = "${session}",
 		readonly = true
@@ -46,33 +47,49 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 	@KeepName
 	private @Nullable MavenSession session;
 	@Parameter(
-		defaultValue =
-			"${project.build.directory}/" +
-			"${project.build.finalName}-effective.pom"
-	)
-	@Getter
-	@KeepName
-	private @Nullable File effectivePom;
-	@Parameter(
 		defaultValue = "${project.basedir}/pom.xml"
 	)
 	@Getter
 	@KeepName
-	private @Nullable File outputPom;
+	private @Nullable File         inputPom;
 	@Parameter(
-		defaultValue = "${project.build.sourceEncoding}"
+		defaultValue =
+			"${project.build.directory}/" +
+			"${project.build.finalName}-deploy.pom"
 	)
 	@Getter
 	@KeepName
-	private @Nullable String encoding;
-	@Parameter
+	private @Nullable File         outputPom;
+	@Parameter(
+		defaultValue = "false"
+	)
 	@Getter
 	@KeepName
-	private @NotNull List<XmlNode> nodes = List.of(
-		new XmlNode("url", true),
-		new XmlNode("licenses", true),
-		new XmlNode("developers", true)
-	);
+	private           boolean      overwriteEffective;
+	@Parameter(
+		defaultValue = "true"
+	)
+	@Getter
+	@KeepName
+	private           boolean      resolveEffective;
+	@Parameter(
+		defaultValue = "false"
+	)
+	@Getter
+	@KeepName
+	private           boolean      copyEffectiveUrl;
+	@Parameter(
+		defaultValue = "false"
+	)
+	@Getter
+	@KeepName
+	private           boolean      copyEffectiveLicenses;
+	@Parameter(
+		defaultValue = "false"
+	)
+	@Getter
+	@KeepName
+	private           boolean      copyEffectiveDevelopers;
 
 	@Override
 	public void execute() throws MojoExecutionException {
@@ -80,129 +97,140 @@ public class CopyFromEffectiveMojo extends AbstractMojo {
 		if (session == null) {
 			throw new MojoExecutionException("Maven session is not available!");
 		}
-		final @Nullable File effectivePom = this.getEffectivePom();
-		if (effectivePom == null || !(effectivePom.exists())) {
-			this.getLog().error("Couldn't find effective POM!");
-			return;
-		}
-		final @Nullable File outputPom = this.getOutputPom();
-		if (outputPom == null || !(outputPom.exists())) {
-			this.getLog().error("Couldn't find output POM!");
-			return;
-		}
-		@Nullable String encoding = this.getEncoding();
-		if (encoding == null) {
-			encoding = StandardCharsets.UTF_8.name();
-		}
-
 		final @Nullable MavenProject project = session.getCurrentProject();
 		if (project == null) {
 			throw new MojoExecutionException("Maven project is not available!");
 		}
 
-		final @NotNull String artifactId = project.getArtifactId();
+		File inputPom = this.getInputPom();
+		if (inputPom == null || !(inputPom.exists())) {
+			this.getLog().error("Couldn't find input POM!");
+			return;
+		}
+
+		final @NotNull MavenXpp3Reader pomReader = new MavenXpp3Reader();
+		final @Nullable Model          model;
+
+		try {
+			model = pomReader.read(new FileInputStream(inputPom));
+
+			if (model == null) {
+				throw new IOException("Read model is null!");
+			}
+		} catch (final @NotNull IOException | XmlPullParserException e) {
+			this.getLog().error(
+				"Can't read model from input POM!",
+				e
+			);
+			return;
+		}
+
+		final boolean overwriteEffective = this.isOverwriteEffective();
 		final @NotNull PropertyProcessor propertyProcessor =
 			new PropertyProcessor(session);
 
+		@Nullable String existingUrl = model.getUrl();
+		if (
+			this.isCopyEffectiveUrl() &&
+			(
+				existingUrl == null ||
+				existingUrl.isEmpty() ||
+				overwriteEffective
+			)
+		) {
+			@Nullable String url = project.getUrl();
+			if (this.isResolveEffective()) {
+				url = propertyProcessor.resolveString(url);
+			}
+
+			model.setUrl(url);
+		}
+
+		@NotNull List<License> existingLicenses = model.getLicenses();
+		if (
+			this.isCopyEffectiveLicenses() &&
+			(
+				existingLicenses == null ||
+				existingLicenses.isEmpty() ||
+				overwriteEffective
+			)
+		) {
+			final @NotNull List<License> licenses;
+			if (this.isResolveEffective()) {
+				licenses = new ArrayList<>();
+				for (License licenseItem : project.getLicenses()) {
+					License license = new License();
+					license.setName(propertyProcessor.resolveString(
+						licenseItem.getName()
+					));
+					license.setUrl(propertyProcessor.resolveString(
+						licenseItem.getUrl()
+					));
+					license.setDistribution(propertyProcessor.resolveString(
+						licenseItem.getDistribution()
+					));
+					licenses.add(license);
+				}
+			} else {
+				licenses = project.getLicenses();
+			}
+
+			model.setLicenses(licenses);
+		}
+
+		@NotNull List<Developer> existingDevelopers = model.getDevelopers();
+		if (
+			this.isCopyEffectiveDevelopers() &&
+			(
+				existingDevelopers == null ||
+				existingDevelopers.isEmpty() ||
+				overwriteEffective
+			)
+		) {
+			final @NotNull List<Developer> developers;
+			if (this.isResolveEffective()) {
+				developers = new ArrayList<>();
+				for (Developer developerItem : project.getDevelopers()) {
+					Developer developer = new Developer();
+					developer.setName(propertyProcessor.resolveString(
+						developerItem.getName()
+					));
+					developer.setEmail(propertyProcessor.resolveString(
+						developerItem.getEmail()
+					));
+					developer.setOrganization(propertyProcessor.resolveString(
+						developerItem.getOrganization()
+					));
+					developer.setOrganizationUrl(propertyProcessor.resolveString(
+						developerItem.getOrganizationUrl()
+					));
+					developers.add(developer);
+				}
+			} else {
+				developers = project.getDevelopers();
+			}
+
+			model.setDevelopers(developers);
+		}
+
+		final @Nullable File outputPom = this.getOutputPom();
+		if (outputPom == null) {
+			this.getLog().info(
+				"Output POM is not set! Don't export model to file."
+			);
+			return;
+		}
+		final @NotNull MavenXpp3Writer pomWriter = new MavenXpp3Writer();
 		try {
-			final @NotNull XmlProcessor xmlProcessor = new XmlProcessor();
-			final @NotNull DocumentBuilder builder =
-				xmlProcessor.createDocumentBuilder();
-			final @NotNull XPath xpath = XPathFactory.newInstance().newXPath();
-			final @NotNull String xpathExpression = String.format(
-				"//project[normalize-space(artifactId)='%s']",
-				artifactId
-			);
-			final @NotNull XPathExpression projectXpath = xpath.compile(
-				xpathExpression
-			);
-
-			final @NotNull Document effectiveDoc = builder.parse(effectivePom);
-			final @Nullable Node effectiveProject = (Node)(
-				projectXpath.evaluate(effectiveDoc, XPathConstants.NODE)
-			);
-			if (effectiveProject == null) {
-				this.getLog().error("Effective POM is not valid!");
-				return;
-			}
-
-			final @NotNull Document outputDoc = builder.parse(outputPom);
-			final @Nullable Node outputProject = (Node)(projectXpath.evaluate(
-				outputDoc,
-				XPathConstants.NODE
-			));
-			if (outputProject == null) {
-				this.getLog().error("Output POM is not valid!");
-				return;
-			}
-
-			boolean outputChanged = false;
-			for (final @NotNull XmlNode node : this.getNodes()) {
-				final @Nullable String nodeXpath = node.getXpath();
-				if (nodeXpath == null || nodeXpath.isEmpty()) {
-					continue;
-				}
-
-				final @Nullable Node effectiveNode = (Node)(xpath.evaluate(
-					nodeXpath,
-					effectiveProject,
-					XPathConstants.NODE
-				));
-				final @Nullable Node importedNode = outputDoc.importNode(
-					effectiveNode,
-					true
-				);
-				if (node.isResolveProperties()) {
-					propertyProcessor.resolveNode(importedNode);
-				}
-
-				final @Nullable Node outputNode = (Node)(xpath.evaluate(
-					nodeXpath,
-					outputProject,
-					XPathConstants.NODE
-				));
-
-				if (
-					importedNode != null &&
-					(node.isOverwrite() || outputNode == null)
-				) {
-					outputProject.appendChild(importedNode);
-					outputChanged = true;
-					this.getLog().info(
-						"Added " + nodeXpath +
-						" from effective POM to output POM."
-					);
-				}
-			}
-
-			if (outputChanged) {
-				xmlProcessor.format(
-					outputPom,
-					outputDoc,
-					Charset.forName(encoding)
-				);
-				this.getLog().info("Output POM formatted.");
-			}
-		} catch (
-			final @NotNull
-			IOException |
-			ParserConfigurationException |
-			SAXException e
-		) {
-			throw new MojoExecutionException("Couldn't parse POM!", e);
-		} catch (
-			final @NotNull
-			TransformerException e
-		) {
-			throw new MojoExecutionException("Couldn't save output POM!", e);
-		} catch (
-			final @NotNull
-			XPathExpressionException e
-		) {
-			throw new MojoExecutionException(
-				"Couldn't parse xpath to project node!",
+			pomWriter.write(new FileOutputStream(outputPom), model);
+		} catch (final @NotNull IOException e) {
+			this.getLog().error(
+				"Can't write model to output POM!",
 				e
 			);
 		}
+
+		project.setPomFile(outputPom);
+		project.setModel(model);
 	}
 }
