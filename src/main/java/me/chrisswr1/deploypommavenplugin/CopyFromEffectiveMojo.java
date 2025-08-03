@@ -6,23 +6,18 @@ import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Developer;
 import org.apache.maven.model.License;
 import org.apache.maven.model.Model;
-import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
-import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
-import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import proguard.annotation.Keep;
 import proguard.annotation.KeepName;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -96,27 +91,14 @@ public class CopyFromEffectiveMojo
 			throw new MojoExecutionException("Maven project is not available!");
 		}
 
-		final @Nullable File inputPom = project.getFile();
-		if (inputPom == null || !(inputPom.exists())) {
-			this.getLog().error("Couldn't find project POM!");
-			return;
-		}
-
-		final @NotNull MavenXpp3Reader pomReader = new MavenXpp3Reader();
-		final @Nullable Model          model;
-
+		final @NotNull Model model;
 		try {
-			model = pomReader.read(new FileInputStream(inputPom));
-
-			if (model == null) {
-				throw new IOException("Read model is null!");
-			}
-		} catch (final @NotNull IOException | XmlPullParserException e) {
-			this.getLog().error(
-				"Can't read model from input POM!",
+			model = PomProcessor.getModel(project.getFile());
+		} catch (IOException e) {
+			throw new MojoExecutionException(
+				"Couldn't read model from POM!",
 				e
 			);
-			return;
 		}
 
 		final boolean overwriteEffective = this.isOverwriteWithEffective();
@@ -211,25 +193,13 @@ public class CopyFromEffectiveMojo
 			model.setDevelopers(developers);
 		}
 
-		final @Nullable File outputPom = this.getOutputPom();
-		if (outputPom == null) {
-			this.getLog().info(
-				"No output POM specified was specified!"
-			);
-			return;
-		}
-		final @NotNull MavenXpp3Writer pomWriter = new MavenXpp3Writer();
 		try {
-			pomWriter.write(new FileOutputStream(outputPom), model);
-		} catch (final @NotNull IOException e) {
-			this.getLog().error(
+			PomProcessor.setModel(this.getOutputPom(), model, project);
+		} catch (IOException e) {
+			throw new MojoExecutionException(
 				"Can't write model to output POM!",
 				e
 			);
-			return;
 		}
-
-		project.setPomFile(outputPom);
-		project.setModel(model);
 	}
 }

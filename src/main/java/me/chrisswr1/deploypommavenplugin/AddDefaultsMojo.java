@@ -2,9 +2,9 @@ package me.chrisswr1.deploypommavenplugin;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import lombok.Getter;
-import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Developer;
 import org.apache.maven.model.License;
+import org.apache.maven.model.Model;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -17,6 +17,7 @@ import proguard.annotation.Keep;
 import proguard.annotation.KeepName;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 @Mojo(
@@ -25,11 +26,12 @@ import java.util.List;
 	threadSafe = true
 )
 @Keep
-public class AddDefaultsMojo extends AbstractMojo {
+public class AddDefaultsMojo
+extends AbstractMojo {
 	private static final @NotNull License DEFAULT_LICENSE = new License();
 
 	@Parameter(
-		defaultValue = "${session}",
+		defaultValue = "${project}",
 		readonly = true
 	)
 	@SuppressFBWarnings(
@@ -38,7 +40,7 @@ public class AddDefaultsMojo extends AbstractMojo {
 	)
 	@Getter
 	@KeepName
-	private @Nullable MavenSession session;
+	private @Nullable MavenProject    project;
 	@Parameter(
 		defaultValue =
 			"${project.build.directory}/" +
@@ -46,29 +48,29 @@ public class AddDefaultsMojo extends AbstractMojo {
 	)
 	@Getter
 	@KeepName
-	private @Nullable File         outputPom;
+	private @Nullable File            outputPom;
 	@Parameter(
 		defaultValue = "false"
 	)
 	@Getter
 	@KeepName
-	private           boolean      overwriteWithDefaults;
+	private           boolean         overwriteWithDefaults;
 	@Parameter(
 		defaultValue = "$${project.site.baseUrl}/$${project.site.urlPath}"
 	)
 	@Getter
 	@KeepName
-	private @Nullable String defaultUrl;
+	private @Nullable String          defaultUrl;
 	@Parameter
 	@Getter
 	@KeepName
-	private @NotNull List<License> defaultLicenses = List.of(
+	private @NotNull  List<License>   defaultLicenses   = List.of(
 		AddDefaultsMojo.DEFAULT_LICENSE
 	);
 	@Parameter
 	@Getter
 	@KeepName
-	private @NotNull List<Developer> defaultDevelopers = List.of();
+	private @NotNull  List<Developer> defaultDevelopers = List.of();
 
 	static {
 		AddDefaultsMojo.DEFAULT_LICENSE.setName("${license.signature}");
@@ -78,31 +80,40 @@ public class AddDefaultsMojo extends AbstractMojo {
 
 	@Override
 	public void execute() throws MojoExecutionException {
-		final @Nullable MavenSession session = this.getSession();
-		if (session == null) {
-			throw new MojoExecutionException("Couldn't get Maven session!");
-		}
-		final @Nullable MavenProject project = session.getCurrentProject();
+		final @Nullable MavenProject project = this.getProject();
 		if (project == null) {
 			throw new MojoExecutionException("No Maven project found!");
+		}
+
+		final @Nullable Model model;
+		try {
+			model = PomProcessor.getModel(project.getFile());
+		} catch (IOException e) {
+			throw new MojoExecutionException("Couldn't read project POM!", e);
 		}
 
 		final boolean overwriteWithDefaults = this.isOverwriteWithDefaults();
 
 		final @Nullable String url = this.getDefaultUrl();
-		if (
-			url != null &&
-			(project.getUrl() == null || overwriteWithDefaults)
-		) {
-			project.setUrl(url);
+		if (url != null && (model.getUrl() == null || overwriteWithDefaults)) {
+			model.setUrl(url);
 		}
 
-		if (project.getLicenses().isEmpty() || overwriteWithDefaults) {
-			project.setLicenses(this.getDefaultLicenses());
+		if (model.getLicenses().isEmpty() || overwriteWithDefaults) {
+			model.setLicenses(this.getDefaultLicenses());
 		}
 
-		if (project.getDevelopers().isEmpty() || overwriteWithDefaults) {
-			project.setDevelopers(this.getDefaultDevelopers());
+		if (model.getDevelopers().isEmpty() || overwriteWithDefaults) {
+			model.setDevelopers(this.getDefaultDevelopers());
+		}
+
+		try {
+			PomProcessor.setModel(this.getOutputPom(), model, project);
+		} catch (IOException e) {
+			throw new MojoExecutionException(
+				"Can't write model to output POM!",
+				e
+			);
 		}
 	}
 }
