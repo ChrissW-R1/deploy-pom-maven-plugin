@@ -34,7 +34,7 @@ import java.util.List;
 )
 @Keep
 public class CopyFromEffectiveMojo
-extends AbstractMojo {
+	extends AbstractMojo {
 	@Parameter(
 		defaultValue = "${session}",
 		readonly = true
@@ -46,12 +46,6 @@ extends AbstractMojo {
 	@Getter
 	@KeepName
 	private @Nullable MavenSession session;
-	@Parameter(
-		defaultValue = "${project.basedir}/pom.xml"
-	)
-	@Getter
-	@KeepName
-	private @Nullable File         inputPom;
 	@Parameter(
 		defaultValue =
 			"${project.build.directory}/" +
@@ -102,9 +96,9 @@ extends AbstractMojo {
 			throw new MojoExecutionException("Maven project is not available!");
 		}
 
-		File inputPom = this.getInputPom();
+		final @Nullable File inputPom = project.getFile();
 		if (inputPom == null || !(inputPom.exists())) {
-			this.getLog().error("Couldn't find input POM!");
+			this.getLog().error("Couldn't find project POM!");
 			return;
 		}
 
@@ -121,7 +115,7 @@ extends AbstractMojo {
 			this.getLog().error(
 				"Can't read model from input POM!",
 				e
-			);
+							   );
 			return;
 		}
 
@@ -160,6 +154,7 @@ extends AbstractMojo {
 				licenses = new ArrayList<>();
 				for (License licenseItem : project.getLicenses()) {
 					License license = new License();
+
 					license.setName(propertyProcessor.resolveString(
 						licenseItem.getName()
 					));
@@ -169,6 +164,7 @@ extends AbstractMojo {
 					license.setDistribution(propertyProcessor.resolveString(
 						licenseItem.getDistribution()
 					));
+
 					licenses.add(license);
 				}
 			} else {
@@ -192,6 +188,7 @@ extends AbstractMojo {
 				developers = new ArrayList<>();
 				for (Developer developerItem : project.getDevelopers()) {
 					Developer developer = new Developer();
+
 					developer.setName(propertyProcessor.resolveString(
 						developerItem.getName()
 					));
@@ -204,6 +201,7 @@ extends AbstractMojo {
 					developer.setOrganizationUrl(propertyProcessor.resolveString(
 						developerItem.getOrganizationUrl()
 					));
+
 					developers.add(developer);
 				}
 			} else {
@@ -216,7 +214,7 @@ extends AbstractMojo {
 		final @Nullable File outputPom = this.getOutputPom();
 		if (outputPom == null) {
 			this.getLog().info(
-				"Output POM is not set! Don't export model to file."
+				"No output POM specified was specified!"
 			);
 			return;
 		}
@@ -228,6 +226,7 @@ extends AbstractMojo {
 				"Can't write model to output POM!",
 				e
 			);
+			return;
 		}
 
 		project.setPomFile(outputPom);
