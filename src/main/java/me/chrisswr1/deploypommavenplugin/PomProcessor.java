@@ -2,6 +2,7 @@ package me.chrisswr1.deploypommavenplugin;
 
 import lombok.AllArgsConstructor;
 import org.apache.maven.model.Model;
+import org.apache.maven.model.building.*;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.apache.maven.project.MavenProject;
@@ -13,6 +14,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Properties;
 
 @AllArgsConstructor
 public class PomProcessor {
@@ -43,7 +45,7 @@ public class PomProcessor {
 		final @Nullable File file,
 		final @NotNull Model model,
 		final @NotNull MavenProject project
-	) throws IOException {
+	) throws IOException, ModelBuildingException {
 		if (file == null) {
 			throw new IOException("File cannot be null!");
 		}
@@ -69,7 +71,28 @@ public class PomProcessor {
 			pomWriter.write(fos, model);
 		}
 
-		project.setPomFile(file);
+		final @NotNull Properties projectProperties = project.getProperties();
+
 		project.setModel(model);
+		project.setPomFile(file);
+
+		final @NotNull ModelBuildingRequest request =
+			new DefaultModelBuildingRequest();
+		request.setProcessPlugins(true);
+		request.setPomFile(file);
+		request.setValidationLevel(
+			ModelBuildingRequest.VALIDATION_LEVEL_MAVEN_3_1
+		);
+
+		projectProperties.putAll(project.getProperties());
+		request.setSystemProperties(System.getProperties());
+		request.setUserProperties(projectProperties);
+
+		final @NotNull ModelBuilder modelBuilder =
+			new DefaultModelBuilderFactory().newInstance();
+		final @NotNull ModelBuildingResult result = modelBuilder.build(request);
+
+		final @NotNull Model effectiveModel = result.getEffectiveModel();
+		project.setModel(effectiveModel);
 	}
 }

@@ -5,6 +5,7 @@ import lombok.Getter;
 import org.apache.maven.model.Developer;
 import org.apache.maven.model.License;
 import org.apache.maven.model.Model;
+import org.apache.maven.model.building.ModelBuildingException;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -88,7 +89,7 @@ extends AbstractMojo {
 		final @Nullable Model model;
 		try {
 			model = PomProcessor.getModel(project.getFile());
-		} catch (IOException e) {
+		} catch (final @NotNull IOException e) {
 			throw new MojoExecutionException("Couldn't read project POM!", e);
 		}
 
@@ -131,7 +132,11 @@ extends AbstractMojo {
 		if (appliedChanges) {
 			try {
 				PomProcessor.setModel(this.getOutputPom(), model, project);
-			} catch (IOException e) {
+			} catch (
+				final @NotNull
+				IOException |
+				ModelBuildingException e
+			) {
 				throw new MojoExecutionException(
 					"Can't write model to output POM!",
 					e
