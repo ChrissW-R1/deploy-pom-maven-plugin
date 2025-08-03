@@ -48,6 +48,13 @@ public class PomProcessor {
 			throw new IOException("File cannot be null!");
 		}
 
+		if (!(file.createNewFile())) {
+			throw new IOException(
+				"File already exists or could not be created: " +
+				file.getAbsolutePath()
+			);
+		}
+
 		final @NotNull MavenXpp3Writer pomWriter = new MavenXpp3Writer();
 		try (final @NotNull FileOutputStream fos = new FileOutputStream(file)) {
 			pomWriter.write(fos, model);
