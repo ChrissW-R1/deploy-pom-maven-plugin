@@ -26,8 +26,8 @@ public class PomProcessor {
 		final @NotNull MavenXpp3Reader pomReader = new MavenXpp3Reader();
 		final @Nullable Model          model;
 
-		try {
-			model = pomReader.read(new FileInputStream(file));
+		try (final @NotNull FileInputStream fis = new FileInputStream(file)) {
+			model = pomReader.read(fis);
 		} catch (final @NotNull XmlPullParserException e) {
 			throw new IOException("Couldn't parse model from POM!", e);
 		}
@@ -49,7 +49,9 @@ public class PomProcessor {
 		}
 
 		final @NotNull MavenXpp3Writer pomWriter = new MavenXpp3Writer();
-		pomWriter.write(new FileOutputStream(file), model);
+		try (final @NotNull FileOutputStream fos = new FileOutputStream(file)) {
+			pomWriter.write(fos, model);
+		}
 
 		project.setPomFile(file);
 		project.setModel(model);
