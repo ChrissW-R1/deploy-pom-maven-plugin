@@ -59,13 +59,13 @@ public class CopyFromEffectiveMojo
 	)
 	@Getter
 	@KeepName
-	private           boolean      overwriteEffective;
+	private           boolean      overwriteWithEffective;
 	@Parameter(
 		defaultValue = "true"
 	)
 	@Getter
 	@KeepName
-	private           boolean      resolveEffective;
+	private           boolean      resolveEffectiveElements;
 	@Parameter(
 		defaultValue = "false"
 	)
@@ -115,11 +115,11 @@ public class CopyFromEffectiveMojo
 			this.getLog().error(
 				"Can't read model from input POM!",
 				e
-							   );
+			);
 			return;
 		}
 
-		final boolean overwriteEffective = this.isOverwriteEffective();
+		final boolean overwriteEffective = this.isOverwriteWithEffective();
 		final @NotNull PropertyProcessor propertyProcessor =
 			new PropertyProcessor(session);
 
@@ -133,7 +133,7 @@ public class CopyFromEffectiveMojo
 			)
 		) {
 			@Nullable String url = project.getUrl();
-			if (this.isResolveEffective()) {
+			if (this.isResolveEffectiveElements()) {
 				url = propertyProcessor.resolveString(url);
 			}
 
@@ -150,7 +150,7 @@ public class CopyFromEffectiveMojo
 			)
 		) {
 			final @NotNull List<License> licenses;
-			if (this.isResolveEffective()) {
+			if (this.isResolveEffectiveElements()) {
 				licenses = new ArrayList<>();
 				for (License licenseItem : project.getLicenses()) {
 					License license = new License();
@@ -184,7 +184,7 @@ public class CopyFromEffectiveMojo
 			)
 		) {
 			final @NotNull List<Developer> developers;
-			if (this.isResolveEffective()) {
+			if (this.isResolveEffectiveElements()) {
 				developers = new ArrayList<>();
 				for (Developer developerItem : project.getDevelopers()) {
 					Developer developer = new Developer();

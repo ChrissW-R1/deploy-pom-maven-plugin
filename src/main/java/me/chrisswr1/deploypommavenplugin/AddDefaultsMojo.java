@@ -16,6 +16,7 @@ import org.jetbrains.annotations.Nullable;
 import proguard.annotation.Keep;
 import proguard.annotation.KeepName;
 
+import java.io.File;
 import java.util.List;
 
 @Mojo(
@@ -25,7 +26,6 @@ import java.util.List;
 )
 @Keep
 public class AddDefaultsMojo extends AbstractMojo {
-	private static final @NotNull String WRAPPED_TAG = "wrapped";
 	private static final @NotNull License DEFAULT_LICENSE = new License();
 
 	@Parameter(
@@ -40,27 +40,35 @@ public class AddDefaultsMojo extends AbstractMojo {
 	@KeepName
 	private @Nullable MavenSession session;
 	@Parameter(
+		defaultValue =
+			"${project.build.directory}/" +
+			"${project.build.finalName}-deploy.pom"
+	)
+	@Getter
+	@KeepName
+	private @Nullable File         outputPom;
+	@Parameter(
 		defaultValue = "false"
 	)
 	@Getter
 	@KeepName
-	private boolean overwriteWithDefaults;
+	private           boolean      overwriteWithDefaults;
 	@Parameter(
 		defaultValue = "$${project.site.baseUrl}/$${project.site.urlPath}"
 	)
 	@Getter
 	@KeepName
-	private @Nullable String url;
+	private @Nullable String defaultUrl;
 	@Parameter
 	@Getter
 	@KeepName
-	private @NotNull List<License> licenses = List.of(
+	private @NotNull List<License> defaultLicenses = List.of(
 		AddDefaultsMojo.DEFAULT_LICENSE
 	);
 	@Parameter
 	@Getter
 	@KeepName
-	private @NotNull List<Developer> developers = List.of();
+	private @NotNull List<Developer> defaultDevelopers = List.of();
 
 	static {
 		AddDefaultsMojo.DEFAULT_LICENSE.setName("${license.signature}");
@@ -81,7 +89,7 @@ public class AddDefaultsMojo extends AbstractMojo {
 
 		final boolean overwriteWithDefaults = this.isOverwriteWithDefaults();
 
-		final @Nullable String url = this.getUrl();
+		final @Nullable String url = this.getDefaultUrl();
 		if (
 			url != null &&
 			(project.getUrl() == null || overwriteWithDefaults)
@@ -90,11 +98,11 @@ public class AddDefaultsMojo extends AbstractMojo {
 		}
 
 		if (project.getLicenses().isEmpty() || overwriteWithDefaults) {
-			project.setLicenses(this.getLicenses());
+			project.setLicenses(this.getDefaultLicenses());
 		}
 
 		if (project.getDevelopers().isEmpty() || overwriteWithDefaults) {
-			project.setDevelopers(this.getDevelopers());
+			project.setDevelopers(this.getDefaultDevelopers());
 		}
 	}
 }
