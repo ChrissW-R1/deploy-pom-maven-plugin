@@ -48,9 +48,18 @@ public class PomProcessor {
 			throw new IOException("File cannot be null!");
 		}
 
+		final @NotNull File directory = file.getParentFile();
+		if (directory != null) {
+			if (!(directory.mkdirs())) {
+				throw new IOException(
+					"Cannot create directory of output POM: " +
+					directory.getAbsolutePath()
+				);
+			}
+		}
 		if (!(file.createNewFile())) {
 			throw new IOException(
-				"File already exists or could not be created: " +
+				"File of output POM already exists or could not be created: " +
 				file.getAbsolutePath()
 			);
 		}
