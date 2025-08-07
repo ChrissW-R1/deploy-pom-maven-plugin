@@ -26,6 +26,10 @@ public class PropertyProcessor {
 			new StringSearchInterpolator();
 
 		if (session != null) {
+			stringInterpolator.addValueSource(new PropertiesBasedValueSource(
+				session.getSystemProperties()
+			));
+
 			final @Nullable MavenProject project = session.getCurrentProject();
 			if (project != null) {
 				stringInterpolator.addValueSource(
@@ -41,9 +45,6 @@ public class PropertyProcessor {
 
 			stringInterpolator.addValueSource(
 				new PropertiesBasedValueSource(session.getUserProperties())
-			);
-			stringInterpolator.addValueSource(
-				new PropertiesBasedValueSource(session.getSystemProperties())
 			);
 		}
 
