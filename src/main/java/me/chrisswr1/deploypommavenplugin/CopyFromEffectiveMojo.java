@@ -23,7 +23,6 @@ import proguard.annotation.KeepName;
 import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 @Mojo(
@@ -156,16 +155,9 @@ extends AbstractMojo {
 				overwriteEffective
 			)
 		) {
-			final @NotNull List<License> licenses;
+			@NotNull List<License> licenses = project.getLicenses();
 			if (resolveEffective) {
-				licenses = new ArrayList<>();
-				for (License licenseItem : project.getLicenses()) {
-					licenses.add(
-						propertyProcessor.resolveLicense(licenseItem)
-					);
-				}
-			} else {
-				licenses = project.getLicenses();
+				licenses = propertyProcessor.resolveLicenses(licenses);
 			}
 
 			for (final @NotNull License license : licenses) {
@@ -187,16 +179,9 @@ extends AbstractMojo {
 				overwriteEffective
 			)
 		) {
-			final @NotNull List<Developer> developers;
+			@NotNull List<Developer> developers = project.getDevelopers();
 			if (resolveEffective) {
-				developers = new ArrayList<>();
-				for (Developer developerItem : project.getDevelopers()) {
-					developers.add(
-						propertyProcessor.resolveDeveloper(developerItem)
-					);
-				}
-			} else {
-				developers = project.getDevelopers();
+				developers = propertyProcessor.resolveDevelopers(developers);
 			}
 
 			for (final @NotNull Developer developer : developers) {

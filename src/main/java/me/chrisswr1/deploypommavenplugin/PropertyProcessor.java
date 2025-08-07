@@ -13,6 +13,10 @@ import org.codehaus.plexus.interpolation.StringSearchInterpolator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 public class PropertyProcessor {
 	@SuppressFBWarnings(
 		value = "EI_EXPOSE_REP",
@@ -83,20 +87,34 @@ public class PropertyProcessor {
 
 		final @NotNull License resolvedLicense = license.clone();
 
-		resolvedLicense.setName(this.resolveString(
-			license.getName()
-		));
-		resolvedLicense.setUrl(this.resolveString(
-			license.getUrl()
-		));
-		resolvedLicense.setDistribution(this.resolveString(
-			license.getDistribution()
-		));
-		resolvedLicense.setComments(this.resolveString(
-			license.getComments()
-		));
+		resolvedLicense.setName(
+			this.resolveString(license.getName())
+		);
+		resolvedLicense.setUrl(
+			this.resolveString(license.getUrl())
+		);
+		resolvedLicense.setDistribution(
+			this.resolveString(license.getDistribution())
+		);
+		resolvedLicense.setComments(
+			this.resolveString(license.getComments())
+		);
 
 		return resolvedLicense;
+	}
+
+	public @NotNull List<License> resolveLicenses(
+		final @Nullable Collection<? extends License> licenses
+	) {
+		final @NotNull List<License> resolvedLicenses = new ArrayList<>();
+
+		if (licenses != null) {
+			for (final @Nullable License license : licenses) {
+				resolvedLicenses.add(this.resolveLicense(license));
+			}
+		}
+
+		return resolvedLicenses;
 	}
 
 	public @Nullable Developer resolveDeveloper(
@@ -108,19 +126,33 @@ public class PropertyProcessor {
 
 		final @NotNull Developer resolvedDeveloper = developer.clone();
 
-		resolvedDeveloper.setName(this.resolveString(
-			developer.getName()
-		));
-		resolvedDeveloper.setEmail(this.resolveString(
-			developer.getEmail()
-		));
-		resolvedDeveloper.setOrganization(this.resolveString(
-			developer.getOrganization()
-		));
-		resolvedDeveloper.setOrganizationUrl(this.resolveString(
-			developer.getOrganizationUrl()
-		));
+		resolvedDeveloper.setName(
+			this.resolveString(developer.getName())
+		);
+		resolvedDeveloper.setEmail(
+			this.resolveString(developer.getEmail())
+		);
+		resolvedDeveloper.setOrganization(
+			this.resolveString(developer.getOrganization())
+		);
+		resolvedDeveloper.setOrganizationUrl(
+			this.resolveString(developer.getOrganizationUrl())
+		);
 
 		return resolvedDeveloper;
+	}
+
+	public @NotNull List<Developer> resolveDevelopers(
+		final @Nullable Collection<? extends Developer> developers
+	) {
+		final @NotNull List<Developer> resolvedDevelopers = new ArrayList<>();
+
+		if (developers != null) {
+			for (final @Nullable Developer developer : developers) {
+				resolvedDevelopers.add(this.resolveDeveloper(developer));
+			}
+		}
+
+		return resolvedDevelopers;
 	}
 }

@@ -145,12 +145,18 @@ extends AbstractMojo {
 			}
 		}
 
-		final @NotNull List<License> defaultLicenses =
+		@NotNull List<License> defaultLicenses =
 			this.getDefaultLicenses();
 		if (
 			(!(defaultLicenses.isEmpty())) &&
 			(model.getLicenses().isEmpty() || overwriteWithDefaults)
 		) {
+			if (resolveDefaultElements) {
+				defaultLicenses = propertyProcessor.resolveLicenses(
+					defaultLicenses
+				);
+			}
+
 			for (final @NotNull License license : defaultLicenses) {
 				log.info(
 					"Add default license to POM: " +
@@ -161,12 +167,18 @@ extends AbstractMojo {
 			appliedChanges = true;
 		}
 
-		final @NotNull List<Developer> defaultDevelopers =
+		@NotNull List<Developer> defaultDevelopers =
 			this.getDefaultDevelopers();
 		if (
 			(!(defaultDevelopers.isEmpty())) &&
 			(model.getDevelopers().isEmpty() || overwriteWithDefaults)
 		) {
+			if (resolveDefaultElements) {
+				defaultDevelopers = propertyProcessor.resolveDevelopers(
+					defaultDevelopers
+				);
+			}
+
 			for (final @NotNull Developer developer : defaultDevelopers) {
 				log.info(
 					"Add default developer to POM: " +
