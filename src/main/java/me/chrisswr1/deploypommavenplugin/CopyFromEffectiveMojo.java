@@ -6,18 +6,20 @@ import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Developer;
 import org.apache.maven.model.License;
 import org.apache.maven.model.Model;
-import org.apache.maven.model.building.ModelBuildingException;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
+import org.apache.maven.project.ProjectBuilder;
+import org.apache.maven.project.ProjectBuildingException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import proguard.annotation.Keep;
 import proguard.annotation.KeepName;
 
+import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -30,7 +32,11 @@ import java.util.List;
 )
 @Keep
 public class CopyFromEffectiveMojo
-	extends AbstractMojo {
+extends AbstractMojo {
+	@Inject
+	@Getter
+	private ProjectBuilder projectBuilder;
+
 	@Parameter(
 		defaultValue = "${session}",
 		readonly = true
@@ -43,9 +49,7 @@ public class CopyFromEffectiveMojo
 	@KeepName
 	private @Nullable MavenSession session;
 	@Parameter(
-		defaultValue =
-			"${project.build.directory}/" +
-			"${project.build.finalName}-deploy.pom"
+		defaultValue = "${project.build.finalName}-deploy.pom"
 	)
 	@Getter
 	@KeepName
@@ -122,7 +126,8 @@ public class CopyFromEffectiveMojo
 			}
 
 			if (
-				url != null && (!(url.isEmpty())) &&
+				url != null &&
+				(!(url.isEmpty())) &&
 				(!(url.equalsIgnoreCase(existingUrl)))
 			) {
 				model.setUrl(url);
@@ -205,11 +210,16 @@ public class CopyFromEffectiveMojo
 
 		if (appliedChanges) {
 			try {
-				PomProcessor.setModel(this.getOutputPom(), model, project);
+				PomProcessor.setModel(
+					this.getOutputPom(),
+					model,
+					session,
+					this.getProjectBuilder()
+				);
 			} catch (
 				final @NotNull
 				IOException |
-				ModelBuildingException e
+				ProjectBuildingException e
 			) {
 				throw new MojoExecutionException(
 					"Can't write model to output POM!",

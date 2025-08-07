@@ -1,11 +1,12 @@
 package me.chrisswr1.deploypommavenplugin;
 
 import lombok.AllArgsConstructor;
+import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Model;
-import org.apache.maven.model.building.*;
+import org.apache.maven.model.building.ModelBuildingRequest;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
-import org.apache.maven.project.MavenProject;
+import org.apache.maven.project.*;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -44,14 +45,26 @@ public class PomProcessor {
 	public static void setModel(
 		final @Nullable File file,
 		final @NotNull Model model,
-		final @NotNull MavenProject project
-	) throws IOException, ModelBuildingException {
+		final @Nullable MavenSession session,
+		final @NotNull ProjectBuilder projectBuilder
+	) throws IOException, ProjectBuildingException, IllegalArgumentException {
 		if (file == null) {
-			throw new IOException("File cannot be null!");
+			throw new IllegalArgumentException("File cannot be null!");
+		}
+		if (session == null) {
+			throw new IllegalArgumentException(
+				"Maven session is not available!"
+			);
+		}
+		final @Nullable MavenProject project = session.getCurrentProject();
+		if (project == null) {
+			throw new IllegalArgumentException(
+				"Maven project is not available!"
+			);
 		}
 
 		final @NotNull File directory = file.getParentFile();
-		if (directory != null) {
+		if (directory != null && (!(directory.exists()))) {
 			if (!(directory.mkdirs())) {
 				throw new IOException(
 					"Cannot create directory of output POM: " +
@@ -76,23 +89,24 @@ public class PomProcessor {
 		project.setModel(model);
 		project.setPomFile(file);
 
-		final @NotNull ModelBuildingRequest request =
-			new DefaultModelBuildingRequest();
+		final @NotNull ProjectBuildingRequest request =
+			session.getProjectBuildingRequest();
 		request.setProcessPlugins(true);
-		request.setPomFile(file);
+		request.setResolveDependencies(true);
 		request.setValidationLevel(
 			ModelBuildingRequest.VALIDATION_LEVEL_MAVEN_3_1
 		);
+		request.setSystemProperties(System.getProperties());
 
 		projectProperties.putAll(project.getProperties());
-		request.setSystemProperties(System.getProperties());
 		request.setUserProperties(projectProperties);
 
-		final @NotNull ModelBuilder modelBuilder =
-			new DefaultModelBuilderFactory().newInstance();
-		final @NotNull ModelBuildingResult result = modelBuilder.build(request);
+		final @NotNull ProjectBuildingResult result = projectBuilder.build(
+			file,
+			request
+		);
+		MavenProject newProject = result.getProject();
 
-		final @NotNull Model effectiveModel = result.getEffectiveModel();
-		project.setModel(effectiveModel);
+		project.setModel(newProject.getModel());
 	}
 }

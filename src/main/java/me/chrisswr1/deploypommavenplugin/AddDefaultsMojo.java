@@ -2,21 +2,24 @@ package me.chrisswr1.deploypommavenplugin;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import lombok.Getter;
+import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Developer;
 import org.apache.maven.model.License;
 import org.apache.maven.model.Model;
-import org.apache.maven.model.building.ModelBuildingException;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
+import org.apache.maven.project.ProjectBuilder;
+import org.apache.maven.project.ProjectBuildingException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import proguard.annotation.Keep;
 import proguard.annotation.KeepName;
 
+import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -31,8 +34,12 @@ public class AddDefaultsMojo
 extends AbstractMojo {
 	private static final @NotNull License DEFAULT_LICENSE = new License();
 
+	@Inject
+	@Getter
+	private ProjectBuilder projectBuilder;
+
 	@Parameter(
-		defaultValue = "${project}",
+		defaultValue = "${session}",
 		readonly = true
 	)
 	@SuppressFBWarnings(
@@ -41,11 +48,9 @@ extends AbstractMojo {
 	)
 	@Getter
 	@KeepName
-	private @Nullable MavenProject    project;
+	private @Nullable MavenSession    session;
 	@Parameter(
-		defaultValue =
-			"${project.build.directory}/" +
-			"${project.build.finalName}-deploy.pom"
+		defaultValue = "${project.build.finalName}-deploy.pom"
 	)
 	@Getter
 	@KeepName
@@ -81,9 +86,13 @@ extends AbstractMojo {
 
 	@Override
 	public void execute() throws MojoExecutionException {
-		final @Nullable MavenProject project = this.getProject();
+		final @Nullable MavenSession session = this.getSession();
+		if (session == null) {
+			throw new MojoExecutionException("Maven session is not available!");
+		}
+		final @Nullable MavenProject project = session.getCurrentProject();
 		if (project == null) {
-			throw new MojoExecutionException("No Maven project found!");
+			throw new MojoExecutionException("Maven project is not available!");
 		}
 
 		final @Nullable Model model;
@@ -111,7 +120,8 @@ extends AbstractMojo {
 			appliedChanges = true;
 		}
 
-		final @NotNull List<License> defaultLicenses = this.getDefaultLicenses();
+		final @NotNull List<License> defaultLicenses =
+			this.getDefaultLicenses();
 		if (
 			(!(defaultLicenses.isEmpty())) &&
 			(model.getLicenses().isEmpty() || overwriteWithDefaults)
@@ -120,7 +130,8 @@ extends AbstractMojo {
 			appliedChanges = true;
 		}
 
-		final @NotNull List<Developer> defaultDevelopers = this.getDefaultDevelopers();
+		final @NotNull List<Developer> defaultDevelopers =
+			this.getDefaultDevelopers();
 		if (
 			(!(defaultLicenses.isEmpty())) &&
 			(model.getDevelopers().isEmpty() || overwriteWithDefaults)
@@ -131,11 +142,16 @@ extends AbstractMojo {
 
 		if (appliedChanges) {
 			try {
-				PomProcessor.setModel(this.getOutputPom(), model, project);
+				PomProcessor.setModel(
+					this.getOutputPom(),
+					model,
+					session,
+					this.getProjectBuilder()
+				);
 			} catch (
 				final @NotNull
 				IOException |
-				ModelBuildingException e
+				ProjectBuildingException e
 			) {
 				throw new MojoExecutionException(
 					"Can't write model to output POM!",
