@@ -8,6 +8,7 @@ import org.apache.maven.model.License;
 import org.apache.maven.model.Model;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -87,6 +88,8 @@ extends AbstractMojo {
 
 	@Override
 	public void execute() throws MojoExecutionException {
+		final @NotNull Log log = this.getLog();
+
 		final @Nullable MavenSession session = this.getSession();
 		if (session == null) {
 			throw new MojoExecutionException("Maven session is not available!");
@@ -128,8 +131,9 @@ extends AbstractMojo {
 			if (
 				url != null &&
 				(!(url.isEmpty())) &&
-				(!(url.equalsIgnoreCase(existingUrl)))
+				(!(url.equals(existingUrl)))
 			) {
+				log.info("Copied URL from effective POM: " + url);
 				model.setUrl(url);
 				appliedChanges = true;
 			}
@@ -166,6 +170,12 @@ extends AbstractMojo {
 				licenses = project.getLicenses();
 			}
 
+			for (final @NotNull License license : licenses) {
+				log.info(
+					"Copied license from effective POM: " +
+					license.getName()
+				);
+			}
 			model.setLicenses(licenses);
 			appliedChanges = true;
 		}
@@ -204,12 +214,22 @@ extends AbstractMojo {
 				developers = project.getDevelopers();
 			}
 
+			for (final @NotNull Developer developer : developers) {
+				log.info(
+					"Copied developer from effective POM: " +
+					developer.getName()
+				);
+			}
 			model.setDevelopers(developers);
 			appliedChanges = true;
 		}
 
 		if (appliedChanges) {
 			try {
+				log.info(
+					"Changed POM with defaults. " +
+					"Reload Maven project."
+				);
 				PomProcessor.setModel(
 					this.getOutputPom(),
 					model,

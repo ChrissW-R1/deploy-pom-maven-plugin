@@ -8,6 +8,7 @@ import org.apache.maven.model.License;
 import org.apache.maven.model.Model;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -86,6 +87,8 @@ extends AbstractMojo {
 
 	@Override
 	public void execute() throws MojoExecutionException {
+		final @NotNull Log log = this.getLog();
+
 		final @Nullable MavenSession session = this.getSession();
 		if (session == null) {
 			throw new MojoExecutionException("Maven session is not available!");
@@ -116,6 +119,7 @@ extends AbstractMojo {
 				overwriteWithDefaults
 			)
 		) {
+			log.info("Add default URL to POM: " + defaultUrl);
 			model.setUrl(defaultUrl);
 			appliedChanges = true;
 		}
@@ -126,6 +130,12 @@ extends AbstractMojo {
 			(!(defaultLicenses.isEmpty())) &&
 			(model.getLicenses().isEmpty() || overwriteWithDefaults)
 		) {
+			for (final @NotNull License license : defaultLicenses) {
+				log.info(
+					"Add default license to POM: " +
+					license.getName()
+				);
+			}
 			model.setLicenses(defaultLicenses);
 			appliedChanges = true;
 		}
@@ -136,12 +146,22 @@ extends AbstractMojo {
 			(!(defaultLicenses.isEmpty())) &&
 			(model.getDevelopers().isEmpty() || overwriteWithDefaults)
 		) {
+			for (final @NotNull Developer developer : defaultDevelopers) {
+				log.info(
+					"Add default developer to POM: " +
+					developer.getName()
+				);
+			}
 			model.setDevelopers(defaultDevelopers);
 			appliedChanges = true;
 		}
 
 		if (appliedChanges) {
 			try {
+				log.info(
+					"Changed POM with defaults. " +
+					"Reload Maven project."
+				);
 				PomProcessor.setModel(
 					this.getOutputPom(),
 					model,
