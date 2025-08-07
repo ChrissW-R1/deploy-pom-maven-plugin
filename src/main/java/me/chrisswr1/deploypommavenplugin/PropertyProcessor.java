@@ -3,6 +3,8 @@ package me.chrisswr1.deploypommavenplugin;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import lombok.Getter;
 import org.apache.maven.execution.MavenSession;
+import org.apache.maven.model.Developer;
+import org.apache.maven.model.License;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.interpolation.InterpolationException;
 import org.codehaus.plexus.interpolation.PrefixedObjectValueSource;
@@ -26,9 +28,9 @@ public class PropertyProcessor {
 			new StringSearchInterpolator();
 
 		if (session != null) {
-			stringInterpolator.addValueSource(new PropertiesBasedValueSource(
-				session.getSystemProperties()
-			));
+			stringInterpolator.addValueSource(
+				new PropertiesBasedValueSource(session.getSystemProperties())
+			);
 
 			final @Nullable MavenProject project = session.getCurrentProject();
 			if (project != null) {
@@ -70,5 +72,55 @@ public class PropertyProcessor {
 		} catch (final @NotNull InterpolationException e) {
 			return text;
 		}
+	}
+
+	public @Nullable License resolveLicense(
+		final @Nullable License license
+	) {
+		if (license == null) {
+			return null;
+		}
+
+		final @NotNull License resolvedLicense = license.clone();
+
+		resolvedLicense.setName(this.resolveString(
+			license.getName()
+		));
+		resolvedLicense.setUrl(this.resolveString(
+			license.getUrl()
+		));
+		resolvedLicense.setDistribution(this.resolveString(
+			license.getDistribution()
+		));
+		resolvedLicense.setComments(this.resolveString(
+			license.getComments()
+		));
+
+		return resolvedLicense;
+	}
+
+	public @Nullable Developer resolveDeveloper(
+		final @Nullable Developer developer
+	) {
+		if (developer == null) {
+			return null;
+		}
+
+		final @NotNull Developer resolvedDeveloper = developer.clone();
+
+		resolvedDeveloper.setName(this.resolveString(
+			developer.getName()
+		));
+		resolvedDeveloper.setEmail(this.resolveString(
+			developer.getEmail()
+		));
+		resolvedDeveloper.setOrganization(this.resolveString(
+			developer.getOrganization()
+		));
+		resolvedDeveloper.setOrganizationUrl(this.resolveString(
+			developer.getOrganizationUrl()
+		));
+
+		return resolvedDeveloper;
 	}
 }

@@ -111,6 +111,7 @@ extends AbstractMojo {
 
 		boolean       appliedChanges     = false;
 		final boolean overwriteEffective = this.isOverwriteWithEffective();
+		final boolean resolveEffective   = this.isResolveEffectiveElements();
 		final @NotNull PropertyProcessor propertyProcessor =
 			new PropertyProcessor(session);
 
@@ -131,7 +132,7 @@ extends AbstractMojo {
 			)
 		) {
 			@Nullable String url = project.getUrl();
-			if (this.isResolveEffectiveElements()) {
+			if (resolveEffective) {
 				url = propertyProcessor.resolveString(url);
 			}
 
@@ -156,22 +157,12 @@ extends AbstractMojo {
 			)
 		) {
 			final @NotNull List<License> licenses;
-			if (this.isResolveEffectiveElements()) {
+			if (resolveEffective) {
 				licenses = new ArrayList<>();
 				for (License licenseItem : project.getLicenses()) {
-					License license = new License();
-
-					license.setName(propertyProcessor.resolveString(
-						licenseItem.getName()
-					));
-					license.setUrl(propertyProcessor.resolveString(
-						licenseItem.getUrl()
-					));
-					license.setDistribution(propertyProcessor.resolveString(
-						licenseItem.getDistribution()
-					));
-
-					licenses.add(license);
+					licenses.add(
+						propertyProcessor.resolveLicense(licenseItem)
+					);
 				}
 			} else {
 				licenses = project.getLicenses();
@@ -197,25 +188,12 @@ extends AbstractMojo {
 			)
 		) {
 			final @NotNull List<Developer> developers;
-			if (this.isResolveEffectiveElements()) {
+			if (resolveEffective) {
 				developers = new ArrayList<>();
 				for (Developer developerItem : project.getDevelopers()) {
-					Developer developer = new Developer();
-
-					developer.setName(propertyProcessor.resolveString(
-						developerItem.getName()
-					));
-					developer.setEmail(propertyProcessor.resolveString(
-						developerItem.getEmail()
-					));
-					developer.setOrganization(propertyProcessor.resolveString(
-						developerItem.getOrganization()
-					));
-					developer.setOrganizationUrl(propertyProcessor.resolveString(
-						developerItem.getOrganizationUrl()
-					));
-
-					developers.add(developer);
+					developers.add(
+						propertyProcessor.resolveDeveloper(developerItem)
+					);
 				}
 			} else {
 				developers = project.getDevelopers();

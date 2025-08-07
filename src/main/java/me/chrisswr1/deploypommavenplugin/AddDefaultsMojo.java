@@ -63,6 +63,12 @@ extends AbstractMojo {
 	@KeepName
 	private           boolean         overwriteWithDefaults;
 	@Parameter(
+		defaultValue = "true"
+	)
+	@Getter
+	@KeepName
+	private           boolean         resolveDefaultElements;
+	@Parameter(
 		defaultValue = "$${project.site.baseUrl}/$${project.site.urlPath}"
 	)
 	@Getter
@@ -105,8 +111,11 @@ extends AbstractMojo {
 			throw new MojoExecutionException("Couldn't read project POM!", e);
 		}
 
-		boolean       appliedChanges        = false;
-		final boolean overwriteWithDefaults = this.isOverwriteWithDefaults();
+		boolean       appliedChanges         = false;
+		final boolean overwriteWithDefaults  = this.isOverwriteWithDefaults();
+		final boolean resolveDefaultElements = this.isResolveDefaultElements();
+		final @NotNull PropertyProcessor propertyProcessor =
+			new PropertyProcessor(session);
 
 		if (overwriteWithDefaults) {
 			log.info(
@@ -116,19 +125,24 @@ extends AbstractMojo {
 		}
 
 		final @Nullable String existingUrl = model.getUrl();
-		final @Nullable String defaultUrl  = this.getDefaultUrl();
+		@Nullable String       defaultUrl  = this.getDefaultUrl();
 		if (
 			defaultUrl != null &&
-			(!(defaultUrl.equalsIgnoreCase(existingUrl))) &&
 			(
 				existingUrl == null ||
 				existingUrl.isEmpty() ||
 				overwriteWithDefaults
 			)
 		) {
-			log.info("Add default URL to POM: " + defaultUrl);
-			model.setUrl(defaultUrl);
-			appliedChanges = true;
+			if (resolveDefaultElements) {
+				defaultUrl = propertyProcessor.resolveString(defaultUrl);
+			}
+
+			if (defaultUrl != null && (!(defaultUrl.equals(existingUrl)))) {
+				log.info("Add default URL to POM: " + defaultUrl);
+				model.setUrl(defaultUrl);
+				appliedChanges = true;
+			}
 		}
 
 		final @NotNull List<License> defaultLicenses =
