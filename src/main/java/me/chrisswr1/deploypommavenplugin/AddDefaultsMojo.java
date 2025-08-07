@@ -185,6 +185,8 @@ extends AbstractMojo {
 					e
 				);
 			}
+		} else {
+			log.info("Nothing changed.");
 		}
 	}
 }
