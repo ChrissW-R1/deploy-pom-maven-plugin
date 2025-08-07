@@ -108,6 +108,13 @@ extends AbstractMojo {
 		boolean       appliedChanges        = false;
 		final boolean overwriteWithDefaults = this.isOverwriteWithDefaults();
 
+		if (overwriteWithDefaults) {
+			log.info(
+				"Existing POM elements will be overwritten " +
+				"with defaults!"
+			);
+		}
+
 		final @Nullable String existingUrl = model.getUrl();
 		final @Nullable String defaultUrl  = this.getDefaultUrl();
 		if (

@@ -114,6 +114,13 @@ extends AbstractMojo {
 		final @NotNull PropertyProcessor propertyProcessor =
 			new PropertyProcessor(session);
 
+		if (overwriteEffective) {
+			log.info(
+				"Existing POM elements will be overwritten " +
+				"with those from effective POM!"
+			);
+		}
+
 		@Nullable String existingUrl = model.getUrl();
 		if (
 			this.isCopyEffectiveUrl() &&
