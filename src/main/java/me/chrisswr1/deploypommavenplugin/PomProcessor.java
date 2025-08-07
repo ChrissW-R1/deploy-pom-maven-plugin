@@ -72,9 +72,9 @@ public class PomProcessor {
 				);
 			}
 		}
-		if (!(file.createNewFile())) {
+		if ((!(file.exists())) && (!(file.createNewFile()))) {
 			throw new IOException(
-				"File of output POM already exists or could not be created: " +
+				"File of output POM could not be created: " +
 				file.getAbsolutePath()
 			);
 		}
