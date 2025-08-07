@@ -150,7 +150,7 @@ extends AbstractMojo {
 		final @NotNull List<Developer> defaultDevelopers =
 			this.getDefaultDevelopers();
 		if (
-			(!(defaultLicenses.isEmpty())) &&
+			(!(defaultDevelopers.isEmpty())) &&
 			(model.getDevelopers().isEmpty() || overwriteWithDefaults)
 		) {
 			for (final @NotNull Developer developer : defaultDevelopers) {
