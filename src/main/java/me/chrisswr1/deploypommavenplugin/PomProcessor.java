@@ -100,12 +100,14 @@ public class PomProcessor {
 		final @NotNull Properties systemProperties = System.getProperties();
 		systemProperties.putAll(session.getSystemProperties());
 		request.setSystemProperties(systemProperties);
+		session.getSystemProperties().putAll(systemProperties);
 
 		final @NotNull Properties userProperties = request.getUserProperties();
 		userProperties.putAll(projectProperties);
 		userProperties.putAll(project.getProperties());
 		userProperties.putAll(session.getUserProperties());
 		request.setUserProperties(userProperties);
+		session.getUserProperties().putAll(userProperties);
 
 		final @NotNull ProjectBuildingResult result = projectBuilder.build(
 			file,
