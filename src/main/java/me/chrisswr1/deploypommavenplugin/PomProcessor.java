@@ -97,14 +97,7 @@ public class PomProcessor {
 			ModelBuildingRequest.VALIDATION_LEVEL_MAVEN_3_1
 		);
 
-		final @NotNull Properties systemProperties = System.getProperties();
-		systemProperties.putAll(session.getSystemProperties());
-		request.setSystemProperties(systemProperties);
-		session.getSystemProperties().putAll(systemProperties);
-
 		final @NotNull Properties userProperties = request.getUserProperties();
-		userProperties.putAll(projectProperties);
-		userProperties.putAll(project.getProperties());
 		userProperties.putAll(session.getUserProperties());
 		request.setUserProperties(userProperties);
 		session.getUserProperties().putAll(userProperties);
@@ -114,6 +107,15 @@ public class PomProcessor {
 			request
 		);
 		MavenProject newProject = result.getProject();
+
+		for (String key : projectProperties.stringPropertyNames()) {
+			if (!(newProject.getProperties().containsKey(key))) {
+				newProject.getProperties().setProperty(
+					key,
+					projectProperties.getProperty(key)
+				);
+			}
+		}
 
 		project.setModel(newProject.getModel());
 	}
