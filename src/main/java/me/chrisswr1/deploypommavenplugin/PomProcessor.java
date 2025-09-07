@@ -86,7 +86,7 @@ public class PomProcessor {
 
 		final @NotNull Properties projectProperties = project.getProperties();
 
-		project.setModel(model);
+		project.setOriginalModel(model);
 		project.setPomFile(file);
 
 		final @NotNull ProjectBuildingRequest request =
@@ -117,6 +117,6 @@ public class PomProcessor {
 			}
 		}
 
-		project.setModel(newProject.getModel());
+		project.setOriginalModel(newProject.getModel());
 	}
 }
