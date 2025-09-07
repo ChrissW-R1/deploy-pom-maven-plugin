@@ -87,7 +87,7 @@ public class PomProcessor {
 		final @NotNull Properties projectProperties = project.getProperties();
 
 		project.setModel(model);
-		//project.setPomFile(file);
+		project.setPomFile(file);
 
 		final @NotNull ProjectBuildingRequest request =
 			session.getProjectBuildingRequest();
