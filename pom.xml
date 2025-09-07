@@ -11,7 +11,7 @@
 	<!-- project identifier -->
 	<groupId>me.chrissw-r1</groupId>
 	<artifactId>deploy-pom-maven-plugin</artifactId>
-	<version>1.1.1-SNAPSHOT</version>
+	<version>1.1.1</version>
 	<packaging>maven-plugin</packaging>
 
 	<!-- project metadata -->
@@ -65,7 +65,7 @@
 		<url>https://github.com/${project.organization.name}/${project.module-root.artifactId}</url>
 		<connection>scm:git:${project.scm.url}.git</connection>
 		<developerConnection>${project.scm.connection}</developerConnection>
-		<tag>HEAD</tag>
+		<tag>1.1.1</tag>
 	</scm>
 
 	<distributionManagement>
