@@ -18,7 +18,7 @@ public class VTDTest {
 		final String[] args
 	) throws IOException {
 		byte[] output = Files.readAllBytes(Path.of("pom.xml"));
-		output = VTDTest.appendContent(
+		output = VTDTest.addContent(
 			output,
 			"<developers>\n" +
 			"\t<developer>\n" +
@@ -27,21 +27,24 @@ public class VTDTest {
 			"\t\t<email>contact@ChrissW-R1.me</email>\n" +
 			"\t</developer>\n" +
 			"</developers>",
-			"/project"
+			"/project",
+			false
 		);
-		output = VTDTest.replaceContent(
+		output = VTDTest.addContent(
 			output,
 			"<url>https://example.com</url>\n<url2>https://example2.com</url2>",
-			"/project/url"
+			"/project/url",
+			true
 		);
 
 		Files.write(Path.of("deploy.pom"), output);
 	}
 
-	public static byte[] appendContent(
+	public static byte[] addContent(
 		final byte[] doc,
 		final String content,
-		final String path
+		final String path,
+		final boolean replace
 	) throws IOException {
 		try {
 			VTDGen gen = new VTDGen();
@@ -52,55 +55,24 @@ public class VTDTest {
 			autoPilot.selectXPath(path);
 
 			XMLModifier modifier = new XMLModifier(nav);
+			boolean     modified = false;
 			if (autoPilot.evalXPath() != -1) {
-				String indent = VTDTest.detectIndent(doc, nav);
-
+				String indent           = VTDTest.detectIndent(doc, nav);
 				String formattedContent = VTDTest.indentLines(content, indent);
-				modifier.insertBeforeTail(indent + formattedContent + "\n");
+
+				if (replace) {
+					modifier.insertBeforeElement(formattedContent);
+					modifier.remove();
+				} else {
+					modifier.insertBeforeTail(
+						indent + formattedContent + "\n"
+					);
+				}
+
+				modified = true;
 			}
 
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			modifier.output(baos);
-			return baos.toByteArray();
-		} catch (
-			final ParseException |
-				  XPathParseException |
-				  ModifyException |
-				  XPathEvalException |
-				  NavException |
-				  TranscodeException e
-		) {
-			throw new IOException("Couldn't handle XML!", e);
-		}
-	}
-
-	public static byte[] replaceContent(
-		final byte[] doc,
-		final String content,
-		final String path
-									   ) throws IOException {
-		try {
-			VTDGen gen = new VTDGen();
-			gen.setDoc(doc);
-			gen.parse(true);
-			VTDNav nav = gen.getNav();
-
-			AutoPilot autoPilot = new AutoPilot(nav);
-			autoPilot.selectXPath(path);
-
-			XMLModifier modifier = new XMLModifier(nav);
-			boolean     replaced = false;
-			if (autoPilot.evalXPath() != -1) {
-				String indent = VTDTest.detectIndent(doc, nav);
-
-				String formattedContent = VTDTest.indentLines(content, indent);
-				modifier.insertBeforeElement(formattedContent);
-				modifier.remove();
-
-				replaced = true;
-			}
-
-			if (!replaced) {
+			if (!modified) {
 				return doc;
 			}
 
@@ -110,9 +82,9 @@ public class VTDTest {
 		} catch (
 			final ParseException |
 				  XPathParseException |
-				  ModifyException |
 				  XPathEvalException |
 				  NavException |
+				  ModifyException |
 				  TranscodeException e
 		) {
 			throw new IOException("Couldn't handle XML!", e);
