@@ -6,8 +6,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class VTDTest {
+	private static final Pattern LINE_SEPARATOR_PATTERN = Pattern.compile(
+		"\r?\n|\r"
+	);
+
 	public static void main(
 		final String[] args
 	) throws IOException {
@@ -47,15 +53,10 @@ public class VTDTest {
 
 			XMLModifier modifier = new XMLModifier(nav);
 			if (autoPilot.evalXPath() != -1) {
-				String indent = VTDTest.detectChildIndent(doc, nav);
+				String indent = VTDTest.detectIndent(doc, nav);
 
-				String formattedContent = content.replace(
-					"\n",
-					"\n" + indent
-				);
-				modifier.insertBeforeTail(
-					indent + formattedContent + "\n"
-				);
+				String formattedContent = VTDTest.indentLines(content, indent);
+				modifier.insertBeforeTail(indent + formattedContent + "\n");
 			}
 
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -77,7 +78,7 @@ public class VTDTest {
 		final byte[] doc,
 		final String content,
 		final String path
-	) throws IOException {
+									   ) throws IOException {
 		try {
 			VTDGen gen = new VTDGen();
 			gen.setDoc(doc);
@@ -90,12 +91,9 @@ public class VTDTest {
 			XMLModifier modifier = new XMLModifier(nav);
 			boolean     replaced = false;
 			if (autoPilot.evalXPath() != -1) {
-				String indent = VTDTest.detectSelfIndent(doc, nav);
+				String indent = VTDTest.detectIndent(doc, nav);
 
-				String formattedContent = content.replace(
-					"\n",
-					"\n" + indent
-				);
+				String formattedContent = VTDTest.indentLines(content, indent);
 				modifier.insertBeforeElement(formattedContent);
 				modifier.remove();
 
@@ -121,7 +119,7 @@ public class VTDTest {
 		}
 	}
 
-	private static String detectChildIndent(
+	private static String detectIndent(
 		final byte[] doc,
 		final VTDNav nav
 	) throws NavException {
@@ -158,36 +156,29 @@ public class VTDTest {
 		}
 	}
 
-	private static String detectSelfIndent(
-		final byte[] doc,
-		final VTDNav nav
+	private static String indentLines(
+		final String content,
+		final String indent
 	) {
-		nav.push();
+		StringBuilder builder = new StringBuilder();
 
-		try {
-			int startTok = nav.getCurrentIndex();
-			int startOff = nav.getTokenOffset(startTok);
+		Matcher matcher = VTDTest.LINE_SEPARATOR_PATTERN.matcher(content);
+		int     last    = 0;
+		while (matcher.find()) {
+			String line      = content.substring(last, matcher.start());
+			String delimiter = matcher.group();
 
-			int i = startOff - 1;
-			while (i >= 0 && doc[i] != '\n' && doc[i] != '\r') {
-				i--;
+			builder.append(line);
+			builder.append(delimiter);
+
+			if (!(line.trim().isEmpty())) {
+				builder.append(indent);
 			}
-			int wsStart = i + 1;
 
-			StringBuilder sb = new StringBuilder();
-			for (int k = wsStart; k < startOff; k++) {
-				byte b = doc[k];
-				if (b == ' ' || b == '\t') {
-					sb.append((char) b);
-				} else {
-					break;
-				}
-			}
-			String indent = sb.toString();
-
-			return indent.isEmpty() ? "\t" : indent;
-		} finally {
-			nav.pop();
+			last = matcher.end();
 		}
+		builder.append(content.substring(last));
+
+		return builder.toString();
 	}
 }
