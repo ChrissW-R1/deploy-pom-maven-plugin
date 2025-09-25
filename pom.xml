@@ -30,7 +30,8 @@
 		<mainClass.localPath>CopyFromEffectiveMojo</mainClass.localPath>
 
 		<!-- dependency versions -->
-		<plexus.version>1.28</plexus.version>
+		<plexus-interpolation.version>1.28</plexus-interpolation.version>
+		<plexus-utils.version>3.6.0</plexus-utils.version>
 		<woodstox.version>7.1.1</woodstox.version>
 		<vtd-xml.version>2.13.4</vtd-xml.version>
 	</properties>
@@ -40,12 +41,12 @@
 		<dependency>
 			<groupId>org.codehaus.plexus</groupId>
 			<artifactId>plexus-interpolation</artifactId>
-			<version>${plexus.version}</version>
+			<version>${plexus-interpolation.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>com.fasterxml.woodstox</groupId>
-			<artifactId>woodstox-core</artifactId>
-			<version>${woodstox.version}</version>
+			<groupId>org.codehaus.plexus</groupId>
+			<artifactId>plexus-utils</artifactId>
+			<version>${plexus-utils.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.ximpleware</groupId>
@@ -80,7 +81,7 @@
 							<artifactSet>
 								<includes>
 									<include>org.codehaus.plexus:plexus-interpolation</include>
-									<include>com.fasterxml.woodstox:woodstox-core</include>
+									<include>org.codehaus.plexus:plexus-utils</include>
 									<include>com.ximpleware:vtd-xml</include>
 								</includes>
 							</artifactSet>

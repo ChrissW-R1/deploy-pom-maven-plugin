@@ -23,6 +23,7 @@ import proguard.annotation.KeepName;
 import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
 
 @Mojo(
@@ -104,9 +105,23 @@ extends AbstractMojo {
 			throw new MojoExecutionException("Maven project is not available!");
 		}
 
+		final @Nullable File pomFile = project.getFile();
+		if (pomFile == null || (!(pomFile.exists()))) {
+			throw new MojoExecutionException(
+				"Project POM file is not available!"
+			);
+		}
+
+		byte[] pomBytes;
+		try {
+			pomBytes = Files.readAllBytes(pomFile.toPath());
+		} catch (IOException e) {
+			throw new MojoExecutionException("Couldn't read project POM!", e);
+		}
+
 		final @Nullable Model model;
 		try {
-			model = PomProcessor.getModel(project.getFile());
+			model = PomProcessor.getModel(pomFile);
 		} catch (final @NotNull IOException e) {
 			throw new MojoExecutionException("Couldn't read project POM!", e);
 		}
@@ -141,6 +156,13 @@ extends AbstractMojo {
 			if (defaultUrl != null && (!(defaultUrl.equals(existingUrl)))) {
 				log.info("Add default URL to POM: " + defaultUrl);
 				model.setUrl(defaultUrl);
+
+				try {
+					PomProcessor.addContent(pomBytes, "<url>" + defaultUrl + "</url>", "/project", overwriteWithDefaults);
+				} catch (IOException e) {
+					log.error("Couldn't add URL to POM!", e);
+				}
+
 				appliedChanges = true;
 			}
 		}
