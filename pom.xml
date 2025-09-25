@@ -31,6 +31,8 @@
 
 		<!-- dependency versions -->
 		<plexus.version>1.28</plexus.version>
+		<woodstox.version>7.1.1</woodstox.version>
+		<vtd-xml.version>2.13.4</vtd-xml.version>
 	</properties>
 
 	<dependencies>
@@ -39,6 +41,16 @@
 			<groupId>org.codehaus.plexus</groupId>
 			<artifactId>plexus-interpolation</artifactId>
 			<version>${plexus.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.woodstox</groupId>
+			<artifactId>woodstox-core</artifactId>
+			<version>${woodstox.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.ximpleware</groupId>
+			<artifactId>vtd-xml</artifactId>
+			<version>${vtd-xml.version}</version>
 		</dependency>
 	</dependencies>
 
@@ -68,6 +80,7 @@
 							<artifactSet>
 								<includes>
 									<include>org.codehaus.plexus:plexus-interpolation</include>
+									<include>com.fasterxml.woodstox:woodstox-core</include>
 								</includes>
 							</artifactSet>
 						</configuration>
