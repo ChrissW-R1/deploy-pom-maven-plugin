@@ -23,18 +23,23 @@ public class VTDTest {
 			"</developers>",
 			"/project"
 		);
+		output = VTDTest.replaceContent(
+			output,
+			"<url>https://example.com</url>\n<url2>https://example2.com</url2>",
+			"/project/url"
+		);
 
 		Files.write(Path.of("deploy.pom"), output);
 	}
 
 	public static byte[] appendContent(
-		final byte[] xml,
+		final byte[] doc,
 		final String content,
 		final String path
 	) throws IOException {
 		try {
 			VTDGen gen = new VTDGen();
-			gen.setDoc(xml);
+			gen.setDoc(doc);
 			gen.parse(true);
 			VTDNav    nav       = gen.getNav();
 			AutoPilot autoPilot = new AutoPilot(nav);
@@ -42,14 +47,14 @@ public class VTDTest {
 
 			XMLModifier modifier = new XMLModifier(nav);
 			if (autoPilot.evalXPath() != -1) {
-				String childIndent = VTDTest.detectChildIndent(xml, nav);
+				String indent = VTDTest.detectChildIndent(doc, nav);
 
 				String formattedContent = content.replace(
 					"\n",
-					"\n" + childIndent
+					"\n" + indent
 				);
 				modifier.insertBeforeTail(
-					childIndent + formattedContent + "\n"
+					indent + formattedContent + "\n"
 				);
 			}
 
@@ -68,8 +73,56 @@ public class VTDTest {
 		}
 	}
 
+	public static byte[] replaceContent(
+		final byte[] doc,
+		final String content,
+		final String path
+	) throws IOException {
+		try {
+			VTDGen gen = new VTDGen();
+			gen.setDoc(doc);
+			gen.parse(true);
+			VTDNav nav = gen.getNav();
+
+			AutoPilot autoPilot = new AutoPilot(nav);
+			autoPilot.selectXPath(path);
+
+			XMLModifier modifier = new XMLModifier(nav);
+			boolean     replaced = false;
+			if (autoPilot.evalXPath() != -1) {
+				String indent = VTDTest.detectSelfIndent(doc, nav);
+
+				String formattedContent = content.replace(
+					"\n",
+					"\n" + indent
+				);
+				modifier.insertBeforeElement(formattedContent);
+				modifier.remove();
+
+				replaced = true;
+			}
+
+			if (!replaced) {
+				return doc;
+			}
+
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			modifier.output(baos);
+			return baos.toByteArray();
+		} catch (
+			final ParseException |
+				  XPathParseException |
+				  ModifyException |
+				  XPathEvalException |
+				  NavException |
+				  TranscodeException e
+		) {
+			throw new IOException("Couldn't handle XML!", e);
+		}
+	}
+
 	private static String detectChildIndent(
-		final byte[] xml,
+		final byte[] doc,
 		final VTDNav nav
 	) throws NavException {
 		nav.push();
@@ -79,18 +132,51 @@ public class VTDTest {
 				return "\t";
 			}
 
-			int childStartTok = nav.getCurrentIndex();
-			int childStartOff = nav.getTokenOffset(childStartTok);
+			int startTok = nav.getCurrentIndex();
+			int startOff = nav.getTokenOffset(startTok);
 
-			int i = childStartOff - 1;
-			while (i >= 0 && xml[i] != '\n' && xml[i] != '\r') {
+			int i = startOff - 1;
+			while (i >= 0 && doc[i] != '\n' && doc[i] != '\r') {
 				i--;
 			}
-			int wsStart = ++i;
+			int wsStart = i + 1;
 
 			StringBuilder sb = new StringBuilder();
-			for (int k = wsStart; k < childStartOff; k++) {
-				byte b = xml[k];
+			for (int k = wsStart; k < startOff; k++) {
+				byte b = doc[k];
+				if (b == ' ' || b == '\t') {
+					sb.append((char) b);
+				} else {
+					break;
+				}
+			}
+			String indent = sb.toString();
+
+			return indent.isEmpty() ? "\t" : indent;
+		} finally {
+			nav.pop();
+		}
+	}
+
+	private static String detectSelfIndent(
+		final byte[] doc,
+		final VTDNav nav
+	) {
+		nav.push();
+
+		try {
+			int startTok = nav.getCurrentIndex();
+			int startOff = nav.getTokenOffset(startTok);
+
+			int i = startOff - 1;
+			while (i >= 0 && doc[i] != '\n' && doc[i] != '\r') {
+				i--;
+			}
+			int wsStart = i + 1;
+
+			StringBuilder sb = new StringBuilder();
+			for (int k = wsStart; k < startOff; k++) {
+				byte b = doc[k];
 				if (b == ' ' || b == '\t') {
 					sb.append((char) b);
 				} else {
