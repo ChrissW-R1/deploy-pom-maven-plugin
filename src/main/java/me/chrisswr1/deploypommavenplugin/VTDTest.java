@@ -14,7 +14,13 @@ public class VTDTest {
 		byte[] output = Files.readAllBytes(Path.of("pom.xml"));
 		output = VTDTest.appendContent(
 			output,
-			"<developers><developer><id>ChrissW-R1</id><name>ChrissW-R1</name><email>contact@ChrissW-R1.me</email></developer></developers>",
+			"<developers>\n" +
+			"\t<developer>\n" +
+			"\t\t<id>ChrissW-R1</id>\n" +
+			"\t\t<name>ChrissW-R1</name>\n" +
+			"\t\t<email>contact@ChrissW-R1.me</email>\n" +
+			"\t</developer>\n" +
+			"</developers>",
 			"/project"
 		);
 
@@ -37,7 +43,14 @@ public class VTDTest {
 			XMLModifier modifier = new XMLModifier(nav);
 			if (autoPilot.evalXPath() != -1) {
 				String childIndent = VTDTest.detectChildIndent(xml, nav);
-				modifier.insertBeforeTail(childIndent + content + "\n");
+
+				String formattedContent = content.replace(
+					"\n",
+					"\n" + childIndent
+				);
+				modifier.insertBeforeTail(
+					childIndent + formattedContent + "\n"
+				);
 			}
 
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
