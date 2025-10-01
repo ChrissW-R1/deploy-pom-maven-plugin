@@ -16,7 +16,7 @@ public class Test {
 			"\t\t<email>contact@ChrissW-R1.me</email>\n" +
 			"\t</developer>\n" +
 			"</developers>",
-			"/project",
+			"/project/abc/foo/bar/developers",
 			false
 		);
 		output = PomProcessor.addContent(

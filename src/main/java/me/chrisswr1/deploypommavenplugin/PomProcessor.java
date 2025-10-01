@@ -13,6 +13,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,51 +32,14 @@ public class PomProcessor {
 		final boolean replace
 	) throws IOException {
 		try {
-			VTDGen gen = new VTDGen();
-			gen.setDoc(doc);
-			gen.parse(true);
-			VTDNav    nav       = gen.getNav();
-			AutoPilot autoPilot = new AutoPilot(nav);
-			autoPilot.selectXPath(path);
-
-			XMLModifier modifier = new XMLModifier(nav);
-			boolean     modified = false;
-			if (autoPilot.evalXPath() != -1) {
-				String indent = PomProcessor.detectIndent(doc, nav);
-				String formattedContent = PomProcessor.indentLines(
-					content,
-					indent
-				);
-
-				if (replace) {
-					modifier.insertBeforeElement(formattedContent);
-					modifier.remove();
-				} else {
-					modifier.insertBeforeTail(
-						indent + formattedContent + "\n"
-					);
-				}
-
-				modified = true;
-			}
-
-			if (!modified) {
+			if (!replace && PomProcessor.pathExists(doc, path)) {
 				return doc;
 			}
-
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			modifier.output(baos);
-			return baos.toByteArray();
-		} catch (
-			final ParseException |
-				  XPathParseException |
-				  XPathEvalException |
-				  NavException |
-				  ModifyException |
-				  TranscodeException e
-		) {
-			throw new IOException("Couldn't handle XML!", e);
+		} catch (final ParseException | XPathParseException e) {
+			throw new IOException("Couldn't check path!", e);
 		}
+
+		return PomProcessor.addContent(doc, content, path);
 	}
 
 	public static @NotNull Model getModel(
@@ -178,15 +143,78 @@ public class PomProcessor {
 		project.setOriginalModel(newProject.getModel());
 	}
 
-	private static String detectIndent(
+	private static String getPathParent(final String path) {
+		int lastSlash = path.lastIndexOf('/');
+		return lastSlash > 0 ? path.substring(0, lastSlash) : path;
+	}
+
+	private static String getLocalElement(final String path) {
+		int lastSlash = path.lastIndexOf('/');
+		return lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
+	}
+
+	private static VTDNav getNav(
+		final byte[] doc
+	) throws ParseException {
+		VTDGen gen = new VTDGen();
+		gen.setDoc(doc);
+		gen.parse(true);
+		return gen.getNav();
+	}
+
+	private static boolean pathExists(
+		final byte[] doc,
+		final String path
+	) throws ParseException, XPathParseException {
+		VTDNav    nav       = PomProcessor.getNav(doc);
+		AutoPilot autoPilot = new AutoPilot(nav);
+
+		autoPilot.selectXPath("boolean(" + path + ")");
+		return autoPilot.evalXPathToBoolean();
+	}
+
+	private static String detectIndentUnit(
 		final byte[] doc,
 		final VTDNav nav
 	) throws NavException {
 		nav.push();
 
 		try {
-			if (!(nav.toElement(VTDNav.FIRST_CHILD))) {
-				return "\t";
+			if (nav.toElement(VTDNav.PARENT)) {
+				String self  = PomProcessor.detectIndent(
+					doc,
+					nav,
+					false
+				);
+				String child = PomProcessor.detectIndent(
+					doc,
+					nav,
+					true
+				);
+
+				return child.startsWith(self) ?
+					   child.substring(self.length()) :
+					   "\t";
+			}
+		} finally {
+			nav.pop();
+		}
+
+		return "\t";
+	}
+
+	private static String detectIndent(
+		final byte[] doc,
+		final VTDNav nav,
+		boolean child
+	) throws NavException {
+		nav.push();
+
+		try {
+			if (child && !(nav.toElement(VTDNav.FIRST_CHILD))) {
+				String self = PomProcessor.detectIndent(doc, nav, false);
+				String unit = PomProcessor.detectIndentUnit(doc, nav);
+				return self + unit;
 			}
 
 			int startTok = nav.getCurrentIndex();
@@ -202,7 +230,7 @@ public class PomProcessor {
 			for (int k = wsStart; k < startOff; k++) {
 				byte b = doc[k];
 				if (b == ' ' || b == '\t') {
-					sb.append((char) b);
+					sb.append((char)b);
 				} else {
 					break;
 				}
@@ -239,5 +267,100 @@ public class PomProcessor {
 		builder.append(content.substring(last));
 
 		return builder.toString();
+	}
+
+	private static byte[] addContent(
+		final byte[] doc,
+		final String content,
+		final String path
+	) throws IOException {
+		try {
+			byte[] modifiedDoc = doc.clone();
+
+			Deque<String[]> pathElements = new ArrayDeque<>();
+			String          currentPath  = path;
+			while (!(PomProcessor.pathExists(modifiedDoc, currentPath))) {
+				String parentPath   = PomProcessor.getPathParent(currentPath);
+				String localElement = PomProcessor.getLocalElement(currentPath);
+
+				if (parentPath.equals(currentPath)) {
+					throw new IOException("Root elements mismatch!");
+				}
+
+				pathElements.push(new String[]{parentPath, localElement});
+				currentPath = parentPath;
+			}
+
+			for (String[] element : pathElements) {
+				String parentPath   = element[0];
+				String localElement = element[1];
+
+				VTDNav    nav       = PomProcessor.getNav(modifiedDoc);
+				AutoPilot autoPilot = new AutoPilot(nav);
+				autoPilot.selectXPath(parentPath);
+				XMLModifier modifier = new XMLModifier(nav);
+
+				if (autoPilot.evalXPath() != -1) {
+					String indent = PomProcessor.detectIndent(
+						modifiedDoc,
+						nav,
+						true
+					);
+					String formattedContent = PomProcessor.indentLines(
+						"<" + localElement + ">\n</" +
+						localElement + ">",
+						indent
+					);
+
+					modifier.insertBeforeTail(
+						indent + formattedContent + "\n"
+					);
+
+					ByteArrayOutputStream baos = new ByteArrayOutputStream();
+					modifier.output(baos);
+					modifiedDoc = baos.toByteArray();
+				}
+			}
+
+			VTDNav    nav       = PomProcessor.getNav(modifiedDoc);
+			AutoPilot autoPilot = new AutoPilot(nav);
+			autoPilot.selectXPath(path);
+
+			XMLModifier modifier = new XMLModifier(nav);
+			boolean     modified = false;
+			if (autoPilot.evalXPath() != -1) {
+				String indent = PomProcessor.detectIndent(
+					modifiedDoc,
+					nav,
+					false
+				);
+				String formattedContent = PomProcessor.indentLines(
+					content,
+					indent
+				);
+
+				modifier.insertBeforeElement(formattedContent);
+				modifier.remove();
+
+				modified = true;
+			}
+
+			if (!modified) {
+				return doc;
+			}
+
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			modifier.output(baos);
+			return baos.toByteArray();
+		} catch (
+			final ParseException |
+				  XPathParseException |
+				  XPathEvalException |
+				  NavException |
+				  ModifyException |
+				  TranscodeException e
+		) {
+			throw new IOException("Couldn't handle XML!", e);
+		}
 	}
 }
