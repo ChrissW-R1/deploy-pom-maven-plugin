@@ -112,7 +112,7 @@ extends AbstractMojo {
 			);
 		}
 
-		final byte[] pomBytes;
+		byte[] pomBytes;
 		try {
 			pomBytes = Files.readAllBytes(pomFile.toPath());
 		} catch (
@@ -136,9 +136,7 @@ extends AbstractMojo {
 		final boolean overwriteWithDefaults  = this.isOverwriteWithDefaults();
 		final boolean resolveDefaultElements = this.isResolveDefaultElements();
 		final @NotNull PropertyProcessor propertyProcessor =
-			new PropertyProcessor(
-				session
-			);
+			new PropertyProcessor(session);
 
 		if (overwriteWithDefaults) {
 			log.info(
@@ -165,10 +163,10 @@ extends AbstractMojo {
 				model.setUrl(defaultUrl);
 
 				try {
-					PomProcessor.addContent(
+					pomBytes = PomProcessor.addContent(
 						pomBytes,
 						"<url>" + defaultUrl + "</url>",
-						"/project",
+						"/project/url",
 						overwriteWithDefaults
 					);
 				} catch (
@@ -213,13 +211,73 @@ extends AbstractMojo {
 				);
 			}
 
+			final @NotNull StringBuilder sb = new StringBuilder();
+			sb.append("<developers>\n");
 			for (final @NotNull Developer developer : defaultDevelopers) {
-				log.info(
-					"Add default developer to POM: " +
-					developer.getName()
-				);
+				final @NotNull String name = developer.getName();
+				log.info("Add default developer to POM: " + name);
+
+				sb.append("\t<developer>\n");
+
+				final @Nullable String id = developer.getId();
+				if (id != null && (!(id.trim().isEmpty()))) {
+					sb.append("\t\t<id>").append(id).append("</id>\n");
+				}
+
+				if (name != null && (!(name.trim().isEmpty()))) {
+					sb.append("\t\t<name>").append(name).append("</name>\n");
+				}
+
+				final @Nullable String email = developer.getEmail();
+				if (email != null && (!(email.trim().isEmpty()))) {
+					sb.append("\t\t<email>").append(email).append("</email>\n");
+				}
+
+				final @Nullable String url = developer.getUrl();
+				if (url != null && (!(url.trim().isEmpty()))) {
+					sb.append("\t\t<url>").append(url).append("</url>\n");
+				}
+
+				final @Nullable String organization =
+					developer.getOrganization();
+				if (organization != null &&
+					(!(organization.trim().isEmpty()))) {
+					sb.append("\t\t<organization>").append(
+						organization
+					).append("</organization>\n");
+				}
+
+				final @Nullable String organizationUrl = developer.getOrganizationUrl();
+				if (organizationUrl != null &&
+					(!(organizationUrl.trim().isEmpty()))) {
+					sb.append("\t\t<organizationUrl>").append(
+						organizationUrl
+					).append("</organizationUrl>\n");
+				}
+
+				final @Nullable String timezone = developer.getTimezone();
+				if (timezone != null && (!(timezone.trim().isEmpty()))) {
+					sb.append("\t\t<timezone>").append(
+						timezone
+					).append("</timezone>\n");
+				}
+
+				sb.append("\t</developer>");
 			}
+			sb.append("</developers>");
 			model.setDevelopers(defaultDevelopers);
+
+			try {
+				pomBytes = PomProcessor.addContent(
+					pomBytes,
+					sb.toString(),
+					"/project/developers",
+					overwriteWithDefaults
+				);
+			} catch (final @NotNull IOException e) {
+				log.error("Couldn't add URL to POM!", e);
+			}
+
 			appliedChanges = true;
 		}
 
@@ -235,6 +293,7 @@ extends AbstractMojo {
 					session,
 					this.getProjectBuilder()
 				);
+				Files.write(this.getOutputPom().toPath(), pomBytes);
 			} catch (
 				final @NotNull
 				IOException |
