@@ -35,7 +35,7 @@ public class CopyFromEffectiveMojo
 extends AbstractMojo {
 	@Inject
 	@Getter
-	private ProjectBuilder projectBuilder;
+	private @NotNull ProjectBuilder projectBuilder;
 
 	@Parameter(
 		defaultValue = "${session}",
@@ -101,7 +101,10 @@ extends AbstractMojo {
 		final @NotNull Model model;
 		try {
 			model = PomProcessor.getModel(project.getFile());
-		} catch (final @NotNull IOException e) {
+		} catch (
+			final @NotNull
+			IOException e
+		) {
 			throw new MojoExecutionException(
 				"Couldn't read model from POM!",
 				e
@@ -121,10 +124,9 @@ extends AbstractMojo {
 			);
 		}
 
-		@Nullable String existingUrl = model.getUrl();
+		final @Nullable String existingUrl = model.getUrl();
 		if (
-			this.isCopyEffectiveUrl() &&
-			(
+			this.isCopyEffectiveUrl() && (
 				existingUrl == null ||
 				existingUrl.isEmpty() ||
 				overwriteEffective
@@ -146,10 +148,9 @@ extends AbstractMojo {
 			}
 		}
 
-		@NotNull List<License> existingLicenses = model.getLicenses();
+		final @NotNull List<License> existingLicenses = model.getLicenses();
 		if (
-			this.isCopyEffectiveLicenses() &&
-			(
+			this.isCopyEffectiveLicenses() && (
 				existingLicenses == null ||
 				existingLicenses.isEmpty() ||
 				overwriteEffective
@@ -170,10 +171,10 @@ extends AbstractMojo {
 			appliedChanges = true;
 		}
 
-		@NotNull List<Developer> existingDevelopers = model.getDevelopers();
+		final @NotNull List<Developer> existingDevelopers =
+			model.getDevelopers();
 		if (
-			this.isCopyEffectiveDevelopers() &&
-			(
+			this.isCopyEffectiveDevelopers() && (
 				existingDevelopers == null ||
 				existingDevelopers.isEmpty() ||
 				overwriteEffective

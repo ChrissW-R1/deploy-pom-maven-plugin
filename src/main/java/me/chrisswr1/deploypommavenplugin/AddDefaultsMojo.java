@@ -38,7 +38,7 @@ extends AbstractMojo {
 
 	@Inject
 	@Getter
-	private ProjectBuilder projectBuilder;
+	private @NotNull ProjectBuilder projectBuilder;
 
 	@Parameter(
 		defaultValue = "${session}",
@@ -112,17 +112,23 @@ extends AbstractMojo {
 			);
 		}
 
-		byte[] pomBytes;
+		final byte[] pomBytes;
 		try {
 			pomBytes = Files.readAllBytes(pomFile.toPath());
-		} catch (IOException e) {
+		} catch (
+			final @NotNull
+			IOException e
+		) {
 			throw new MojoExecutionException("Couldn't read project POM!", e);
 		}
 
 		final @Nullable Model model;
 		try {
 			model = PomProcessor.getModel(pomFile);
-		} catch (final @NotNull IOException e) {
+		} catch (
+			final @NotNull
+			IOException e
+		) {
 			throw new MojoExecutionException("Couldn't read project POM!", e);
 		}
 
@@ -130,7 +136,9 @@ extends AbstractMojo {
 		final boolean overwriteWithDefaults  = this.isOverwriteWithDefaults();
 		final boolean resolveDefaultElements = this.isResolveDefaultElements();
 		final @NotNull PropertyProcessor propertyProcessor =
-			new PropertyProcessor(session);
+			new PropertyProcessor(
+				session
+			);
 
 		if (overwriteWithDefaults) {
 			log.info(
@@ -142,8 +150,7 @@ extends AbstractMojo {
 		final @Nullable String existingUrl = model.getUrl();
 		@Nullable String       defaultUrl  = this.getDefaultUrl();
 		if (
-			defaultUrl != null &&
-			(
+			defaultUrl != null && (
 				existingUrl == null ||
 				existingUrl.isEmpty() ||
 				overwriteWithDefaults
@@ -158,8 +165,16 @@ extends AbstractMojo {
 				model.setUrl(defaultUrl);
 
 				try {
-					PomProcessor.addContent(pomBytes, "<url>" + defaultUrl + "</url>", "/project", overwriteWithDefaults);
-				} catch (IOException e) {
+					PomProcessor.addContent(
+						pomBytes,
+						"<url>" + defaultUrl + "</url>",
+						"/project",
+						overwriteWithDefaults
+					);
+				} catch (
+					final @NotNull
+					IOException e
+				) {
 					log.error("Couldn't add URL to POM!", e);
 				}
 
@@ -167,12 +182,9 @@ extends AbstractMojo {
 			}
 		}
 
-		@NotNull List<License> defaultLicenses =
-			this.getDefaultLicenses();
-		if (
-			(!(defaultLicenses.isEmpty())) &&
-			(model.getLicenses().isEmpty() || overwriteWithDefaults)
-		) {
+		@NotNull List<License> defaultLicenses = this.getDefaultLicenses();
+		if ((!(defaultLicenses.isEmpty())) &&
+			(model.getLicenses().isEmpty() || overwriteWithDefaults)) {
 			if (resolveDefaultElements) {
 				defaultLicenses = propertyProcessor.resolveLicenses(
 					defaultLicenses

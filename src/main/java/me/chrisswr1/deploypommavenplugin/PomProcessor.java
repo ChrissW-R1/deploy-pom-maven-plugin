@@ -21,25 +21,36 @@ import java.util.regex.Pattern;
 
 @AllArgsConstructor
 public class PomProcessor {
-	private static final Pattern LINE_SEPARATOR_PATTERN = Pattern.compile(
-		"\r?\n|\r"
-	);
+	private static final @NotNull Pattern LINE_SEPARATOR_PATTERN =
+		Pattern.compile(
+			"\r?\n|\r"
+		);
 
 	public static byte[] addContent(
 		final byte[] doc,
-		final String content,
-		final String path,
+		final @Nullable String content,
+		final @Nullable String path,
 		final boolean replace
 	) throws IOException {
+		if (content == null || content.trim().isEmpty()) {
+			return doc;
+		}
+
+		final @NotNull String normalizedPath = (path != null) ? path : "/";
+
 		try {
-			if (!replace && PomProcessor.pathExists(doc, path)) {
+			if (!replace && PomProcessor.pathExists(doc, normalizedPath)) {
 				return doc;
 			}
-		} catch (final ParseException | XPathParseException e) {
+		} catch (
+			final @NotNull
+			ParseException |
+			XPathParseException e
+		) {
 			throw new IOException("Couldn't check path!", e);
 		}
 
-		return PomProcessor.addContent(doc, content, path);
+		return PomProcessor.addContent(doc, content, normalizedPath);
 	}
 
 	public static @NotNull Model getModel(
@@ -54,7 +65,10 @@ public class PomProcessor {
 
 		try (final @NotNull FileInputStream fis = new FileInputStream(file)) {
 			model = pomReader.read(fis);
-		} catch (final @NotNull XmlPullParserException e) {
+		} catch (
+			final @NotNull
+			XmlPullParserException e
+		) {
 			throw new IOException("Couldn't parse model from POM!", e);
 		}
 
@@ -129,9 +143,11 @@ public class PomProcessor {
 			file,
 			request
 		);
-		MavenProject newProject = result.getProject();
+		final @Nullable MavenProject newProject = result.getProject();
 
-		for (String key : projectProperties.stringPropertyNames()) {
+		for (
+			final @Nullable String key : projectProperties.stringPropertyNames()
+		) {
 			if (!(newProject.getProperties().containsKey(key))) {
 				newProject.getProperties().setProperty(
 					key,
@@ -143,20 +159,20 @@ public class PomProcessor {
 		project.setOriginalModel(newProject.getModel());
 	}
 
-	private static String getPathParent(final String path) {
-		int lastSlash = path.lastIndexOf('/');
+	private static String getPathParent(final @NotNull String path) {
+		final int lastSlash = path.lastIndexOf('/');
 		return lastSlash > 0 ? path.substring(0, lastSlash) : path;
 	}
 
-	private static String getLocalElement(final String path) {
-		int lastSlash = path.lastIndexOf('/');
+	private static String getLocalElement(final @NotNull String path) {
+		final int lastSlash = path.lastIndexOf('/');
 		return lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
 	}
 
-	private static VTDNav getNav(
+	private static @NotNull VTDNav getNav(
 		final byte[] doc
 	) throws ParseException {
-		VTDGen gen = new VTDGen();
+		final @NotNull VTDGen gen = new VTDGen();
 		gen.setDoc(doc);
 		gen.parse(true);
 		return gen.getNav();
@@ -164,25 +180,33 @@ public class PomProcessor {
 
 	private static boolean pathExists(
 		final byte[] doc,
-		final String path
+		final @NotNull String path
 	) throws ParseException, XPathParseException {
-		VTDNav    nav       = PomProcessor.getNav(doc);
-		AutoPilot autoPilot = new AutoPilot(nav);
+		final @NotNull VTDNav    nav       = PomProcessor.getNav(doc);
+		final @NotNull AutoPilot autoPilot = new AutoPilot(nav);
 
 		autoPilot.selectXPath("boolean(" + path + ")");
 		return autoPilot.evalXPathToBoolean();
 	}
 
-	private static String detectIndentUnit(
+	private static @NotNull String detectIndentUnit(
 		final byte[] doc,
-		final VTDNav nav
+		final @NotNull VTDNav nav
 	) throws NavException {
 		nav.push();
 
 		try {
 			if (nav.toElement(VTDNav.PARENT)) {
-				String self  = PomProcessor.detectIndent(doc, nav, false);
-				String child = PomProcessor.detectIndent(doc, nav, true);
+				final @NotNull String self = PomProcessor.detectIndent(
+					doc,
+					nav,
+					false
+				);
+				final @NotNull String child = PomProcessor.detectIndent(
+					doc,
+					nav,
+					true
+				);
 
 				return child.startsWith(self) ?
 					   child.substring(self.length()) :
@@ -195,32 +219,39 @@ public class PomProcessor {
 		return "\t";
 	}
 
-	private static String detectIndent(
+	private static @NotNull String detectIndent(
 		final byte[] doc,
-		final VTDNav nav,
+		final @NotNull VTDNav nav,
 		boolean child
 	) throws NavException {
 		nav.push();
 
 		try {
 			if (child && !(nav.toElement(VTDNav.FIRST_CHILD))) {
-				String self = PomProcessor.detectIndent(doc, nav, false);
-				String unit = PomProcessor.detectIndentUnit(doc, nav);
+				final @NotNull String self = PomProcessor.detectIndent(
+					doc,
+					nav,
+					false
+				);
+				final @NotNull String unit = PomProcessor.detectIndentUnit(
+					doc,
+					nav
+				);
 				return self + unit;
 			}
 
-			int startTok = nav.getCurrentIndex();
-			int startOff = nav.getTokenOffset(startTok);
+			final int startTok = nav.getCurrentIndex();
+			final int startOff = nav.getTokenOffset(startTok);
 
 			int i = startOff - 1;
 			while (i >= 0 && doc[i] != '\n' && doc[i] != '\r') {
 				i--;
 			}
-			int wsStart = i + 1;
+			final int wsStart = i + 1;
 
-			StringBuilder sb = new StringBuilder();
+			final @NotNull StringBuilder sb = new StringBuilder();
 			for (int k = wsStart; k < startOff; k++) {
-				byte b = doc[k];
+				final byte b = doc[k];
 				if (b == ' ' || b == '\t') {
 					sb.append((char)b);
 				} else {
@@ -234,17 +265,30 @@ public class PomProcessor {
 		}
 	}
 
-	private static String indentLines(
-		final String content,
-		final String indent
+	private static @NotNull String indentLines(
+		final @Nullable String content,
+		final @Nullable String indent
 	) {
-		StringBuilder builder = new StringBuilder();
+		if (content == null) {
+			return "";
+		}
+		if (content.trim().isEmpty() ||
+			indent == null ||
+			indent.trim().isEmpty()) {
+			return content;
+		}
 
-		Matcher matcher = PomProcessor.LINE_SEPARATOR_PATTERN.matcher(content);
-		int     last    = 0;
+		final @NotNull StringBuilder builder = new StringBuilder();
+
+		final @NotNull Matcher matcher =
+			PomProcessor.LINE_SEPARATOR_PATTERN.matcher(content);
+		int last = 0;
 		while (matcher.find()) {
-			String line      = content.substring(last, matcher.start());
-			String delimiter = matcher.group();
+			final @NotNull String line = content.substring(
+				last,
+				matcher.start()
+			);
+			final @NotNull String delimiter = matcher.group();
 
 			builder.append(line);
 			builder.append(delimiter);
@@ -262,17 +306,24 @@ public class PomProcessor {
 
 	private static byte[] addContent(
 		final byte[] doc,
-		final String content,
-		final String path
+		final @Nullable String content,
+		final @NotNull String path
 	) throws IOException {
+		if (content == null || content.trim().isEmpty()) {
+			return doc;
+		}
+
 		try {
 			byte[] modifiedDoc = doc.clone();
 
-			Deque<String[]> pathElements = new ArrayDeque<>();
-			String          currentPath  = path;
+			final @NotNull Deque<String[]> pathElements = new ArrayDeque<>();
+			@NotNull String                currentPath  = path;
 			while (!(PomProcessor.pathExists(modifiedDoc, currentPath))) {
-				String parentPath   = PomProcessor.getPathParent(currentPath);
-				String localElement = PomProcessor.getLocalElement(currentPath);
+				final @NotNull String parentPath = PomProcessor.getPathParent(
+					currentPath
+				);
+				final @NotNull String localElement =
+					PomProcessor.getLocalElement(currentPath);
 
 				if (parentPath.equals(currentPath)) {
 					throw new IOException("Root elements mismatch!");
@@ -282,32 +333,27 @@ public class PomProcessor {
 				currentPath = parentPath;
 			}
 
-			for (String[] element : pathElements) {
-				String parentPath   = element[0];
-				String localElement = element[1];
+			for (final @NotNull String[] element : pathElements) {
+				final @NotNull String parentPath   = element[0];
+				final @NotNull String localElement = element[1];
 
-				VTDNav    nav       = PomProcessor.getNav(modifiedDoc);
-				AutoPilot autoPilot = new AutoPilot(nav);
+				final @NotNull VTDNav nav = PomProcessor.getNav(modifiedDoc);
+				final @NotNull AutoPilot autoPilot = new AutoPilot(nav);
 				autoPilot.selectXPath(parentPath);
-				XMLModifier modifier = new XMLModifier(nav);
+				final @NotNull XMLModifier modifier = new XMLModifier(nav);
 
 				if (autoPilot.evalXPath() != -1) {
-					String selfIndent = PomProcessor.detectIndent(
-						modifiedDoc,
-						nav,
-						false
-					);
-					String childIndent = PomProcessor.detectIndent(
-						modifiedDoc,
-						nav,
-						true
-					);
+					final @NotNull String selfIndent =
+						PomProcessor.detectIndent(modifiedDoc, nav, false);
+					final @NotNull String childIndent =
+						PomProcessor.detectIndent(modifiedDoc,nav,true);
 
-					String formattedContent = PomProcessor.indentLines(
-						"<" + localElement + ">\n" +
-						"</" + localElement + ">",
-						childIndent
-					);
+					final @NotNull String formattedContent =
+						PomProcessor.indentLines(
+							"<" + localElement + ">\n" +
+							"</" + localElement + ">",
+							childIndent
+						);
 
 					modifier.insertBeforeTail(
 						childIndent.substring(selfIndent.length()) +
@@ -315,28 +361,29 @@ public class PomProcessor {
 						"\n" + selfIndent
 					);
 
-					ByteArrayOutputStream baos = new ByteArrayOutputStream();
+					final @NotNull ByteArrayOutputStream baos =
+						new ByteArrayOutputStream();
 					modifier.output(baos);
 					modifiedDoc = baos.toByteArray();
 				}
 			}
 
-			VTDNav    nav       = PomProcessor.getNav(modifiedDoc);
-			AutoPilot autoPilot = new AutoPilot(nav);
+			final @NotNull VTDNav    nav       = PomProcessor.getNav(
+				modifiedDoc
+			);
+			final @NotNull AutoPilot autoPilot = new AutoPilot(nav);
 			autoPilot.selectXPath(path);
 
-			XMLModifier modifier = new XMLModifier(nav);
-			boolean     modified = false;
+			final @NotNull XMLModifier modifier = new XMLModifier(nav);
+			boolean                    modified = false;
 			if (autoPilot.evalXPath() != -1) {
-				String indent = PomProcessor.detectIndent(
+				final @NotNull String indent = PomProcessor.detectIndent(
 					modifiedDoc,
 					nav,
 					false
 				);
-				String formattedContent = PomProcessor.indentLines(
-					content,
-					indent
-				);
+				final @NotNull String formattedContent =
+					PomProcessor.indentLines(content, indent);
 
 				modifier.insertBeforeElement(formattedContent);
 				modifier.remove();
@@ -348,16 +395,18 @@ public class PomProcessor {
 				return doc;
 			}
 
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			final @NotNull ByteArrayOutputStream baos =
+				new ByteArrayOutputStream();
 			modifier.output(baos);
 			return baos.toByteArray();
 		} catch (
-			final ParseException |
-				  XPathParseException |
-				  XPathEvalException |
-				  NavException |
-				  ModifyException |
-				  TranscodeException e
+			final @NotNull
+			ParseException |
+			XPathParseException |
+			XPathEvalException |
+			NavException |
+			ModifyException |
+			TranscodeException e
 		) {
 			throw new IOException("Couldn't handle XML!", e);
 		}
