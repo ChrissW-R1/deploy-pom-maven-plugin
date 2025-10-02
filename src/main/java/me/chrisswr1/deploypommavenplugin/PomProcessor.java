@@ -181,16 +181,8 @@ public class PomProcessor {
 
 		try {
 			if (nav.toElement(VTDNav.PARENT)) {
-				String self  = PomProcessor.detectIndent(
-					doc,
-					nav,
-					false
-				);
-				String child = PomProcessor.detectIndent(
-					doc,
-					nav,
-					true
-				);
+				String self  = PomProcessor.detectIndent(doc, nav, false);
+				String child = PomProcessor.detectIndent(doc, nav, true);
 
 				return child.startsWith(self) ?
 					   child.substring(self.length()) :
@@ -235,9 +227,8 @@ public class PomProcessor {
 					break;
 				}
 			}
-			String indent = sb.toString();
 
-			return indent.isEmpty() ? "\t" : indent;
+			return sb.toString();
 		} finally {
 			nav.pop();
 		}
@@ -301,19 +292,27 @@ public class PomProcessor {
 				XMLModifier modifier = new XMLModifier(nav);
 
 				if (autoPilot.evalXPath() != -1) {
-					String indent = PomProcessor.detectIndent(
+					String selfIndent = PomProcessor.detectIndent(
+						modifiedDoc,
+						nav,
+						false
+					);
+					String childIndent = PomProcessor.detectIndent(
 						modifiedDoc,
 						nav,
 						true
 					);
+
 					String formattedContent = PomProcessor.indentLines(
-						"<" + localElement + ">\n</" +
-						localElement + ">",
-						indent
+						"<" + localElement + ">\n" +
+						"</" + localElement + ">",
+						childIndent
 					);
 
 					modifier.insertBeforeTail(
-						indent + formattedContent + "\n"
+						childIndent.substring(selfIndent.length()) +
+						formattedContent +
+						"\n" + selfIndent
 					);
 
 					ByteArrayOutputStream baos = new ByteArrayOutputStream();
