@@ -37,7 +37,7 @@ extends AbstractMojo {
 
 	@Inject
 	@Getter
-	private @NotNull ProjectBuilder projectBuilder;
+	private @Nullable ProjectBuilder projectBuilder;
 
 	@Parameter(
 		defaultValue = "${session}",
