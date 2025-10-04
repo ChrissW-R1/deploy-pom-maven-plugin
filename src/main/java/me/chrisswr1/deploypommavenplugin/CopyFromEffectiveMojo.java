@@ -14,7 +14,6 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuilder;
-import org.apache.maven.project.ProjectBuildingException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import proguard.annotation.Keep;
@@ -23,6 +22,7 @@ import proguard.annotation.KeepName;
 import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
 
 @Mojo(
@@ -98,9 +98,31 @@ extends AbstractMojo {
 			throw new MojoExecutionException("Maven project is not available!");
 		}
 
+		final @Nullable File pomFile = project.getFile();
+		if (pomFile == null || (!(pomFile.exists()))) {
+			throw new MojoExecutionException(
+				"Project POM file is not available!"
+			);
+		}
+
+		final @Nullable File outputPom = this.getOutputPom();
+		if (outputPom == null) {
+			throw new MojoExecutionException("Output POM file is not defined!");
+		}
+
+		byte[] pomBytes;
+		try {
+			pomBytes = Files.readAllBytes(pomFile.toPath());
+		} catch (
+			final @NotNull
+			IOException e
+		) {
+			throw new MojoExecutionException("Couldn't read project POM!", e);
+		}
+
 		final @NotNull Model model;
 		try {
-			model = PomProcessor.getModel(project.getFile());
+			model = PomProcessor.getModel(pomFile);
 		} catch (
 			final @NotNull
 			IOException e
@@ -143,7 +165,21 @@ extends AbstractMojo {
 				(!(url.equals(existingUrl)))
 			) {
 				log.info("Copied URL from effective POM: " + url);
-				model.setUrl(url);
+
+				try {
+					PomProcessor.addContent(
+						pomBytes,
+						"<url>" + url + "</url>",
+						"/project/url",
+						overwriteEffective
+					);
+				} catch (
+					final @NotNull
+					IOException e
+				) {
+					log.error("Couldn't add URL to POM!", e);
+				}
+
 				appliedChanges = true;
 			}
 		}
@@ -161,18 +197,56 @@ extends AbstractMojo {
 				licenses = propertyProcessor.resolveLicenses(licenses);
 			}
 
+			final @NotNull StringBuilder sb = new StringBuilder();
+			sb.append("<licenses>\n");
 			for (final @NotNull License license : licenses) {
+				final @Nullable String name = license.getName();
 				log.info(
-					"Copied license from effective POM: " +
-					license.getName()
+					"Copied license from effective POM: " + name
 				);
+
+				sb.append("\t<license>\n");
+				if (name != null && (!(name.trim().isEmpty()))) {
+					sb.append("\t\t<name>").append(name).append("</name>\n");
+				}
+
+				final @Nullable String distribution = license.getDistribution();
+				if (distribution != null &&
+					(!(distribution.trim().isEmpty()))) {
+					sb.append("\t\t<distribution>").append(
+						distribution
+					).append("</distribution>\n");
+				}
+
+				final @Nullable String comments = license.getComments();
+				if (comments != null && (!(comments.trim().isEmpty()))) {
+					sb.append("\t\t<comments>").append(
+						comments
+					).append("</comments>\n");
+				}
+
+				sb.append("\t</license>\n");
 			}
-			model.setLicenses(licenses);
+			sb.append("</licenses>");
+
+			try {
+				pomBytes = PomProcessor.addContent(
+					pomBytes,
+					sb.toString(),
+					"/project/licenses",
+					overwriteEffective
+				);
+			} catch (
+				final @NotNull
+				IOException e
+			) {
+				log.error("Couldn't add URL to POM!", e);
+			}
+
 			appliedChanges = true;
 		}
 
-		final @NotNull List<Developer> existingDevelopers =
-			model.getDevelopers();
+		final @NotNull List<Developer> existingDevelopers = model.getDevelopers();
 		if (
 			this.isCopyEffectiveDevelopers() && (
 				existingDevelopers == null ||
@@ -185,13 +259,76 @@ extends AbstractMojo {
 				developers = propertyProcessor.resolveDevelopers(developers);
 			}
 
+			final @NotNull StringBuilder sb = new StringBuilder();
+			sb.append("<developers>\n");
 			for (final @NotNull Developer developer : developers) {
+				final @Nullable String name = developer.getName();
 				log.info(
-					"Copied developer from effective POM: " +
-					developer.getName()
+					"Copied developer from effective POM: " + name
 				);
+
+				sb.append("\t<developer>\n");
+
+				final @Nullable String id = developer.getId();
+				if (id != null && (!(id.trim().isEmpty()))) {
+					sb.append("\t\t<id>").append(id).append("</id>\n");
+				}
+
+				if (name != null && (!(name.trim().isEmpty()))) {
+					sb.append("\t\t<name>").append(name).append("</name>\n");
+				}
+
+				final @Nullable String email = developer.getEmail();
+				if (email != null && (!(email.trim().isEmpty()))) {
+					sb.append("\t\t<email>").append(email).append("</email>\n");
+				}
+
+				final @Nullable String url = developer.getUrl();
+				if (url != null && (!(url.trim().isEmpty()))) {
+					sb.append("\t\t<url>").append(url).append("</url>\n");
+				}
+
+				final @Nullable String organization = developer.getOrganization();
+				if (organization != null &&
+					(!(organization.trim().isEmpty()))) {
+					sb.append("\t\t<organization>").append(
+						organization
+					).append("</organization>\n");
+				}
+
+				final @Nullable String organizationUrl = developer.getOrganizationUrl();
+				if (organizationUrl != null &&
+					(!(organizationUrl.trim().isEmpty()))) {
+					sb.append("\t\t<organizationUrl>").append(
+						organizationUrl
+					).append("</organizationUrl>\n");
+				}
+
+				final @Nullable String timezone = developer.getTimezone();
+				if (timezone != null && (!(timezone.trim().isEmpty()))) {
+					sb.append("\t\t<timezone>").append(
+						timezone
+					).append("</timezone>\n");
+				}
+
+				sb.append("\t</developer>\n");
 			}
-			model.setDevelopers(developers);
+			sb.append("</developers>");
+
+			try {
+				pomBytes = PomProcessor.addContent(
+					pomBytes,
+					sb.toString(),
+					"/project/developers",
+					overwriteEffective
+				);
+			} catch (
+				final @NotNull
+				IOException e
+			) {
+				log.error("Couldn't add URL to POM!", e);
+			}
+
 			appliedChanges = true;
 		}
 
@@ -201,16 +338,10 @@ extends AbstractMojo {
 					"Changed POM with defaults. " +
 					"Reload Maven project."
 				);
-				PomProcessor.setModel(
-					this.getOutputPom(),
-					model,
-					session,
-					this.getProjectBuilder()
-				);
+				Files.write(outputPom.toPath(), pomBytes);
 			} catch (
 				final @NotNull
-				IOException |
-				ProjectBuildingException e
+				IOException e
 			) {
 				throw new MojoExecutionException(
 					"Can't write model to output POM!",

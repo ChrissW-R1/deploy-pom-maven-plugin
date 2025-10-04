@@ -14,7 +14,6 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuilder;
-import org.apache.maven.project.ProjectBuildingException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import proguard.annotation.Keep;
@@ -112,6 +111,11 @@ extends AbstractMojo {
 			);
 		}
 
+		final @Nullable File outputPom = this.getOutputPom();
+		if (outputPom == null) {
+			throw new MojoExecutionException("Output POM file is not defined!");
+		}
+
 		byte[] pomBytes;
 		try {
 			pomBytes = Files.readAllBytes(pomFile.toPath());
@@ -160,7 +164,6 @@ extends AbstractMojo {
 
 			if (defaultUrl != null && (!(defaultUrl.equals(existingUrl)))) {
 				log.info("Add default URL to POM: " + defaultUrl);
-				model.setUrl(defaultUrl);
 
 				try {
 					pomBytes = PomProcessor.addContent(
@@ -189,13 +192,56 @@ extends AbstractMojo {
 				);
 			}
 
+			final @NotNull StringBuilder sb = new StringBuilder();
+			sb.append("<licenses>\n");
 			for (final @NotNull License license : defaultLicenses) {
-				log.info(
-					"Add default license to POM: " +
-					license.getName()
-				);
+				final @Nullable String name = license.getName();
+				log.info("Add default license to POM: " + name);
+
+				sb.append("\t<license>\n");
+
+				if (name != null && (!(name.trim().isEmpty()))) {
+					sb.append("\t\t<name>").append(name).append("</name>\n");
+				}
+
+				final @Nullable String url = license.getUrl();
+				if (url != null && (!(url.trim().isEmpty()))) {
+					sb.append("\t\t<url>").append(url).append("</url>\n");
+				}
+
+				final @Nullable String distribution = license.getDistribution();
+				if (distribution != null &&
+					(!(distribution.trim().isEmpty()))) {
+					sb.append("\t\t<distribution>").append(
+						distribution
+					).append("</distribution>\n");
+				}
+
+				final @Nullable String comments = license.getComments();
+				if (comments != null && (!(comments.trim().isEmpty()))) {
+					sb.append("\t\t<comments>").append(
+						comments
+					).append("</comments>\n");
+				}
+
+				sb.append("\t</license>\n");
 			}
-			model.setLicenses(defaultLicenses);
+			sb.append("</licenses>");
+
+			try {
+				pomBytes = PomProcessor.addContent(
+					pomBytes,
+					sb.toString(),
+					"/project/licenses",
+					overwriteWithDefaults
+				);
+			} catch (
+				final @NotNull
+				IOException e
+			) {
+				log.error("Couldn't add URL to POM!", e);
+			}
+
 			appliedChanges = true;
 		}
 
@@ -262,10 +308,9 @@ extends AbstractMojo {
 					).append("</timezone>\n");
 				}
 
-				sb.append("\t</developer>");
+				sb.append("\t</developer>\n");
 			}
 			sb.append("</developers>");
-			model.setDevelopers(defaultDevelopers);
 
 			try {
 				pomBytes = PomProcessor.addContent(
@@ -274,7 +319,10 @@ extends AbstractMojo {
 					"/project/developers",
 					overwriteWithDefaults
 				);
-			} catch (final @NotNull IOException e) {
+			} catch (
+				final @NotNull
+				IOException e
+			) {
 				log.error("Couldn't add URL to POM!", e);
 			}
 
@@ -287,17 +335,10 @@ extends AbstractMojo {
 					"Changed POM with defaults. " +
 					"Reload Maven project."
 				);
-				PomProcessor.setModel(
-					this.getOutputPom(),
-					model,
-					session,
-					this.getProjectBuilder()
-				);
-				Files.write(this.getOutputPom().toPath(), pomBytes);
+				Files.write(outputPom.toPath(), pomBytes);
 			} catch (
 				final @NotNull
-				IOException |
-				ProjectBuildingException e
+				IOException e
 			) {
 				throw new MojoExecutionException(
 					"Can't write model to output POM!",
