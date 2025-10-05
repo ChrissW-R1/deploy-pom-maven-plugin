@@ -172,6 +172,7 @@ extends AbstractMojo {
 						"/project/url",
 						overwriteWithDefaults
 					);
+					model.setUrl(defaultUrl);
 				} catch (
 					final @NotNull
 					IOException e
@@ -235,6 +236,7 @@ extends AbstractMojo {
 					"/project/licenses",
 					overwriteWithDefaults
 				);
+				model.setLicenses(defaultLicenses);
 			} catch (
 				final @NotNull
 				IOException e
@@ -319,6 +321,7 @@ extends AbstractMojo {
 					"/project/developers",
 					overwriteWithDefaults
 				);
+				model.setDevelopers(defaultDevelopers);
 			} catch (
 				final @NotNull
 				IOException e
@@ -336,6 +339,8 @@ extends AbstractMojo {
 					"Reload Maven project."
 				);
 				Files.write(outputPom.toPath(), pomBytes);
+				model.setPomFile(outputPom);
+				project.setModel(model);
 			} catch (
 				final @NotNull
 				IOException e
