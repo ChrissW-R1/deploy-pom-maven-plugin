@@ -55,7 +55,7 @@
 		<mainClass.localPath>CopyFromEffectiveMojo</mainClass.localPath>
 
 		<!-- dependency versions -->
-		<plexus.version>1.28</plexus.version>
+		<plexus.version>1.29</plexus.version>
 		<maven.version>3.9.11</maven.version>
 
 		<!-- plugin versions -->
