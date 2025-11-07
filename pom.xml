@@ -30,7 +30,7 @@
 		<mainClass.localPath>CopyFromEffectiveMojo</mainClass.localPath>
 
 		<!-- dependency versions -->
-		<plexus-interpolation.version>1.28</plexus-interpolation.version>
+		<plexus-interpolation.version>1.29</plexus-interpolation.version>
 		<plexus-utils.version>3.6.0</plexus-utils.version>
 		<vtd-xml.version>2.13.4</vtd-xml.version>
 	</properties>
