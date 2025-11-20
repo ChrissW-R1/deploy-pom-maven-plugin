@@ -14,7 +14,6 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuilder;
-import org.apache.maven.project.ProjectBuildingException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import proguard.annotation.Keep;
@@ -23,6 +22,7 @@ import proguard.annotation.KeepName;
 import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
 
 @Mojo(
@@ -37,7 +37,7 @@ extends AbstractMojo {
 
 	@Inject
 	@Getter
-	private ProjectBuilder projectBuilder;
+	private @Nullable ProjectBuilder projectBuilder;
 
 	@Parameter(
 		defaultValue = "${session}",
@@ -104,10 +104,35 @@ extends AbstractMojo {
 			throw new MojoExecutionException("Maven project is not available!");
 		}
 
+		final @Nullable File pomFile = project.getFile();
+		if (pomFile == null || (!(pomFile.exists()))) {
+			throw new MojoExecutionException(
+				"Project POM file is not available!"
+			);
+		}
+
+		final @Nullable File outputPom = this.getOutputPom();
+		if (outputPom == null) {
+			throw new MojoExecutionException("Output POM file is not defined!");
+		}
+
+		byte[] pomBytes;
+		try {
+			pomBytes = Files.readAllBytes(pomFile.toPath());
+		} catch (
+			final @NotNull
+			IOException e
+		) {
+			throw new MojoExecutionException("Couldn't read project POM!", e);
+		}
+
 		final @Nullable Model model;
 		try {
-			model = PomProcessor.getModel(project.getFile());
-		} catch (final @NotNull IOException e) {
+			model = PomProcessor.getModel(pomFile);
+		} catch (
+			final @NotNull
+			IOException e
+		) {
 			throw new MojoExecutionException("Couldn't read project POM!", e);
 		}
 
@@ -127,8 +152,7 @@ extends AbstractMojo {
 		final @Nullable String existingUrl = model.getUrl();
 		@Nullable String       defaultUrl  = this.getDefaultUrl();
 		if (
-			defaultUrl != null &&
-			(
+			defaultUrl != null && (
 				existingUrl == null ||
 				existingUrl.isEmpty() ||
 				overwriteWithDefaults
@@ -140,30 +164,86 @@ extends AbstractMojo {
 
 			if (defaultUrl != null && (!(defaultUrl.equals(existingUrl)))) {
 				log.info("Add default URL to POM: " + defaultUrl);
-				model.setUrl(defaultUrl);
+
+				try {
+					pomBytes = PomProcessor.addContent(
+						pomBytes,
+						"<url>" + defaultUrl + "</url>",
+						"/project/url",
+						overwriteWithDefaults
+					);
+					model.setUrl(defaultUrl);
+				} catch (
+					final @NotNull
+					IOException e
+				) {
+					log.error("Couldn't add URL to POM!", e);
+				}
+
 				appliedChanges = true;
 			}
 		}
 
-		@NotNull List<License> defaultLicenses =
-			this.getDefaultLicenses();
-		if (
-			(!(defaultLicenses.isEmpty())) &&
-			(model.getLicenses().isEmpty() || overwriteWithDefaults)
-		) {
+		@NotNull List<License> defaultLicenses = this.getDefaultLicenses();
+		if ((!(defaultLicenses.isEmpty())) &&
+			(model.getLicenses().isEmpty() || overwriteWithDefaults)) {
 			if (resolveDefaultElements) {
 				defaultLicenses = propertyProcessor.resolveLicenses(
 					defaultLicenses
 				);
 			}
 
+			final @NotNull StringBuilder sb = new StringBuilder();
+			sb.append("<licenses>\n");
 			for (final @NotNull License license : defaultLicenses) {
-				log.info(
-					"Add default license to POM: " +
-					license.getName()
-				);
+				final @Nullable String name = license.getName();
+				log.info("Add default license to POM: " + name);
+
+				sb.append("\t<license>\n");
+
+				if (name != null && (!(name.trim().isEmpty()))) {
+					sb.append("\t\t<name>").append(name).append("</name>\n");
+				}
+
+				final @Nullable String url = license.getUrl();
+				if (url != null && (!(url.trim().isEmpty()))) {
+					sb.append("\t\t<url>").append(url).append("</url>\n");
+				}
+
+				final @Nullable String distribution = license.getDistribution();
+				if (distribution != null &&
+					(!(distribution.trim().isEmpty()))) {
+					sb.append("\t\t<distribution>").append(
+						distribution
+					).append("</distribution>\n");
+				}
+
+				final @Nullable String comments = license.getComments();
+				if (comments != null && (!(comments.trim().isEmpty()))) {
+					sb.append("\t\t<comments>").append(
+						comments
+					).append("</comments>\n");
+				}
+
+				sb.append("\t</license>\n");
 			}
-			model.setLicenses(defaultLicenses);
+			sb.append("</licenses>");
+
+			try {
+				pomBytes = PomProcessor.addContent(
+					pomBytes,
+					sb.toString(),
+					"/project/licenses",
+					overwriteWithDefaults
+				);
+				model.setLicenses(defaultLicenses);
+			} catch (
+				final @NotNull
+				IOException e
+			) {
+				log.error("Couldn't add URL to POM!", e);
+			}
+
 			appliedChanges = true;
 		}
 
@@ -179,13 +259,76 @@ extends AbstractMojo {
 				);
 			}
 
+			final @NotNull StringBuilder sb = new StringBuilder();
+			sb.append("<developers>\n");
 			for (final @NotNull Developer developer : defaultDevelopers) {
-				log.info(
-					"Add default developer to POM: " +
-					developer.getName()
-				);
+				final @NotNull String name = developer.getName();
+				log.info("Add default developer to POM: " + name);
+
+				sb.append("\t<developer>\n");
+
+				final @Nullable String id = developer.getId();
+				if (id != null && (!(id.trim().isEmpty()))) {
+					sb.append("\t\t<id>").append(id).append("</id>\n");
+				}
+
+				if (name != null && (!(name.trim().isEmpty()))) {
+					sb.append("\t\t<name>").append(name).append("</name>\n");
+				}
+
+				final @Nullable String email = developer.getEmail();
+				if (email != null && (!(email.trim().isEmpty()))) {
+					sb.append("\t\t<email>").append(email).append("</email>\n");
+				}
+
+				final @Nullable String url = developer.getUrl();
+				if (url != null && (!(url.trim().isEmpty()))) {
+					sb.append("\t\t<url>").append(url).append("</url>\n");
+				}
+
+				final @Nullable String organization =
+					developer.getOrganization();
+				if (organization != null &&
+					(!(organization.trim().isEmpty()))) {
+					sb.append("\t\t<organization>").append(
+						organization
+					).append("</organization>\n");
+				}
+
+				final @Nullable String organizationUrl = developer.getOrganizationUrl();
+				if (organizationUrl != null &&
+					(!(organizationUrl.trim().isEmpty()))) {
+					sb.append("\t\t<organizationUrl>").append(
+						organizationUrl
+					).append("</organizationUrl>\n");
+				}
+
+				final @Nullable String timezone = developer.getTimezone();
+				if (timezone != null && (!(timezone.trim().isEmpty()))) {
+					sb.append("\t\t<timezone>").append(
+						timezone
+					).append("</timezone>\n");
+				}
+
+				sb.append("\t</developer>\n");
 			}
-			model.setDevelopers(defaultDevelopers);
+			sb.append("</developers>");
+
+			try {
+				pomBytes = PomProcessor.addContent(
+					pomBytes,
+					sb.toString(),
+					"/project/developers",
+					overwriteWithDefaults
+				);
+				model.setDevelopers(defaultDevelopers);
+			} catch (
+				final @NotNull
+				IOException e
+			) {
+				log.error("Couldn't add URL to POM!", e);
+			}
+
 			appliedChanges = true;
 		}
 
@@ -195,16 +338,12 @@ extends AbstractMojo {
 					"Changed POM with defaults. " +
 					"Reload Maven project."
 				);
-				PomProcessor.setModel(
-					this.getOutputPom(),
-					model,
-					session,
-					this.getProjectBuilder()
-				);
+				Files.write(outputPom.toPath(), pomBytes);
+				model.setPomFile(outputPom);
+				project.setModel(model);
 			} catch (
 				final @NotNull
-				IOException |
-				ProjectBuildingException e
+				IOException e
 			) {
 				throw new MojoExecutionException(
 					"Can't write model to output POM!",
