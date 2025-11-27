@@ -343,7 +343,7 @@ extends AbstractMojo {
 				);
 				Files.write(outputPom.toPath(), pomBytes);
 				model.setPomFile(outputPom);
-				project.setModel(model);
+				project.setOriginalModel(model);
 			} catch (
 				final @NotNull
 				IOException e
