@@ -272,9 +272,11 @@ public class PomProcessor {
 		if (content == null) {
 			return "";
 		}
-		if (content.trim().isEmpty() ||
+		if (
+			content.trim().isEmpty() ||
 			indent == null ||
-			indent.trim().isEmpty()) {
+			indent.isEmpty()
+		) {
 			return content;
 		}
 
