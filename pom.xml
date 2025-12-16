@@ -10,7 +10,7 @@
 
 	<!-- project identifier -->
 	<artifactId>deploy-pom-maven-plugin</artifactId>
-	<version>1.2.3-SNAPSHOT</version>
+	<version>1.2.4-SNAPSHOT</version>
 	<packaging>maven-plugin</packaging>
 
 	<!-- project metadata -->
