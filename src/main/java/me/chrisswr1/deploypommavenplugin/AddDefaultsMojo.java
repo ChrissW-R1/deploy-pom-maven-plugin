@@ -339,8 +339,8 @@ extends AbstractMojo {
 					"Reload Maven project."
 				);
 				Files.write(outputPom.toPath(), pomBytes);
-				model.setPomFile(outputPom);
 				project.setOriginalModel(model);
+				project.setPomFile(outputPom);
 			} catch (
 				final @NotNull
 				IOException e
