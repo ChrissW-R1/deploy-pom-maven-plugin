@@ -159,12 +159,16 @@ public class PomProcessor {
 		project.setOriginalModel(newProject.getModel());
 	}
 
-	private static String getPathParent(final @NotNull String path) {
+	private static @NotNull String getPathParent(
+		final @NotNull String path
+	) {
 		final int lastSlash = path.lastIndexOf('/');
 		return lastSlash > 0 ? path.substring(0, lastSlash) : path;
 	}
 
-	private static String getLocalElement(final @NotNull String path) {
+	private static @NotNull String getLocalElement(
+		final @NotNull String path
+	) {
 		final int lastSlash = path.lastIndexOf('/');
 		return lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
 	}
