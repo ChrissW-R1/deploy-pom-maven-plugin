@@ -6,7 +6,10 @@ name: Maven - Default Build
 on:
     # Triggers the workflow on push events but only for version branches
     push:
-        branches: ["version/*", "!version/release/*"]
+        branches: [
+            "version/*",
+            "!version/release/*"
+        ]
 
 # Allows to upload to Maven repository with the GITHUB_TOKEN
 permissions:
@@ -26,7 +29,7 @@ jobs:
                 name: Git Checkout
                 uses: actions/checkout@v5
             -   id:   setup_git
-                name: Setup Git user
+                name: Setup Git
                 run:  |
                       git config --global user.name  "github-actions[bot]"
                       git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -46,12 +49,11 @@ jobs:
                 name: Build with Maven
                 env:
                     GITHUB_TOKEN:             ${{ secrets.GITHUB_TOKEN }}
+                    MAVEN_GPG_PASSPHRASE:     ${{ secrets.GPG_PASSPHRASE }}
                     ossindex_user:            ${{ vars.OSSINDEX_USER }}
                     ossindex_api_key:         ${{ secrets.OSSINDEX_API_KEY }}
                     nvd_api_key:              ${{ secrets.NVD_API_KEY }}
-                    gpg_key:                  ${{ secrets.GPG_PRIVATE_KEY }}
                     gpg_keyid:                ${{ secrets.GPG_KEYID }}
-                    gpg_passphrase:           ${{ secrets.GPG_PASSPHRASE }}
                     mvnsiteuploader_password: ${{ secrets.MVNSITEUPLOADER_PASSWORD }}
                 run:  |
                       mvn -B \
