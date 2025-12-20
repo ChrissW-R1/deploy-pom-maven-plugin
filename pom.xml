@@ -20,7 +20,6 @@
 	<description>
 		Maven Plugin to prepare POM for deployment
 	</description>
-	<url>${project.site.baseUrl}/${project.site.urlPath}</url>
 	<inceptionYear>2025</inceptionYear>
 
 	<properties>
