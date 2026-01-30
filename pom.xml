@@ -34,22 +34,38 @@
 		<vtd-xml.version>2.13.4</vtd-xml.version>
 	</properties>
 
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.codehaus.plexus</groupId>
+				<artifactId>plexus-interpolation</artifactId>
+				<version>${plexus-interpolation.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.codehaus.plexus</groupId>
+				<artifactId>plexus-utils</artifactId>
+				<version>${plexus-utils.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.ximpleware</groupId>
+				<artifactId>vtd-xml</artifactId>
+				<version>${vtd-xml.version}</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 	<dependencies>
 		<!-- default dependencies -->
 		<dependency>
 			<groupId>org.codehaus.plexus</groupId>
 			<artifactId>plexus-interpolation</artifactId>
-			<version>${plexus-interpolation.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.codehaus.plexus</groupId>
 			<artifactId>plexus-utils</artifactId>
-			<version>${plexus-utils.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.ximpleware</groupId>
 			<artifactId>vtd-xml</artifactId>
-			<version>${vtd-xml.version}</version>
 		</dependency>
 	</dependencies>
 
