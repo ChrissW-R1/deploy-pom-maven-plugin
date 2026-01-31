@@ -71,16 +71,6 @@
 
 	<build>
 		<sourceDirectory>src/main/java</sourceDirectory>
-		<pluginManagement>
-			<plugins>
-				<plugin>
-					<artifactId>maven-plugin-plugin</artifactId>
-					<configuration>
-						<goalPrefix>deploy-pom</goalPrefix>
-					</configuration>
-				</plugin>
-			</plugins>
-		</pluginManagement>
 		<plugins>
 			<plugin>
 				<artifactId>maven-shade-plugin</artifactId>
