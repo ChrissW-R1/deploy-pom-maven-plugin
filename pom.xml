@@ -24,7 +24,6 @@
 
 	<properties>
 		<!-- technically-based properties -->
-		<project.module-root.relativedir>./</project.module-root.relativedir>
 		<project.module-root.artifactId>deploy-pom-maven-plugin</project.module-root.artifactId>
 		<mainClass.localPath>CopyFromEffectiveMojo</mainClass.localPath>
 
